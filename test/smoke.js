@@ -175,6 +175,8 @@ async function fakeAuth(route, req) {
   check(await sp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll on phone');
   await sp.screenshot({ path: path.join(SHOTS, 'phone-survey.png'), fullPage: true });
   for (let i = 0; i < 5; i++) { await sp.tap(i % 2 ? '#optA' : '#optB'); await sp.waitForTimeout(220); }
+  await sp.tap('#backBtn'); check((await sp.locator('#progText').textContent()) === 'Pair 5 of 28' && await sp.locator('#optB.picked').count() === 1, 'back shows the previous pair with the earlier pick');
+  await sp.tap('#optA'); await sp.waitForTimeout(220); check((await sp.locator('#progText').textContent()) === 'Pair 6 of 28', 'changed answer moves on again');
   await sp.tap('#skipBtn'); await sp.waitForTimeout(220);
   await sp.reload(); await sp.waitForSelector('#survey.active');
   check((await sp.locator('#progText').textContent()) === 'Pair 7 of 28', 'progress survives reload');

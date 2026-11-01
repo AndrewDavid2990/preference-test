@@ -47,7 +47,6 @@ p.note { color: var(--muted); font-size: 14px; margin: 0 0 16px; max-width: 64ch
 .small { font-size: 13px; color: var(--muted); }
 a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 code { font-family: inherit; font-weight: 500; color: var(--ink); background: var(--panel); padding: 1px 5px; border-radius: 2px; }
-.caption { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 
 /* brand header: the logo is a fixed lockup, used from the supplied file */
 .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 36px; }
@@ -99,7 +98,7 @@ input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2p
 .link:hover { color: var(--ink); }
 
 /* survey */
-.progress { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.progress { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
 .bar { height: 2px; background: var(--line); margin-bottom: 30px; }
 .bar > div { height: 100%; background: var(--ink); width: 0; transition: width .25s ease; }
 @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
@@ -113,11 +112,11 @@ input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2p
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .option:hover { border-color: var(--ink); border-top-color: var(--line); } }   /* mouse only: touch would keep it stuck */
-.option .key { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.option .key { font-size: 12px; font-weight: 400; color: var(--muted); }
 .option.picked, .option.picked:hover { border-color: var(--ink); border-top-color: var(--red); }
 @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } .option { min-height: 120px; padding: 20px; font-size: 18px; } .option .key { display: none; } }
-.skip { margin-top: 18px; text-align: center; }
-.preview-bar { display: none; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); background: var(--panel); padding: 10px 14px; margin: 0 0 22px; }
+.skip { margin-top: 18px; display: flex; justify-content: center; gap: 24px; }
+.preview-bar { display: none; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--panel); padding: 10px 14px; margin: 0 0 22px; }
 .preview-bar.on { display: block; }
 
 /* ranked lists (personal results, group ranking, strength, polarization) */
@@ -149,7 +148,7 @@ input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2p
 .badge { display: block; padding: 16px 18px; background: var(--panel); color: var(--ink); font-size: 15px; line-height: 1.5; margin: 8px 0 14px; max-width: 64ch; }
 .badge.good { border-left: 6px solid var(--ink); }
 .badge.warn { border-left: 6px solid var(--line); color: var(--body); }
-.pill { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); vertical-align: middle; }
+.pill { display: inline-block; font-size: 14px; font-weight: 500; color: var(--muted); vertical-align: middle; }
 .pill.warn { color: var(--ink); }
 .flag { color: var(--ink); font-weight: 600; }
 .ok { color: var(--muted); }
@@ -158,8 +157,8 @@ input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2p
 .scroll { overflow-x: auto; }
 table { border-collapse: collapse; font-size: 13px; border: 1.5px solid var(--ink); }
 th, td { padding: 8px 10px; border: 1px solid var(--line); text-align: center; white-space: nowrap; }
-th { font-weight: 600; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-th.rowhead { text-align: left; color: var(--ink); max-width: 260px; white-space: normal; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; }
+th { font-weight: 500; font-size: 13px; color: var(--muted); }
+th.rowhead { text-align: left; color: var(--ink); max-width: 260px; white-space: normal; font-weight: 500; font-size: 13px; }
 td.cell { font-weight: 600; min-width: 56px; color: var(--ink); }
 td.self { background: var(--line); }
 .legend { font-size: 13px; color: var(--muted); margin: 10px 0 0; }

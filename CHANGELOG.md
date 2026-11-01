@@ -2,6 +2,11 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: back button and plainer captions
+
+- Participants can step back one pair at a time with a quiet Back link, see what they picked, and change it. For fixing mis-taps on phones.
+- The last small uppercase captions (pair counter, Open/Closed, Press 1/2, preview banner, table headers, summary labels) are now ordinary sentence case text.
+
 ## 2026-11-01: participant details
 
 - Tests can ask participants one segment question (pick one answer from a list you define) and for an email address (off, optional or required), on a single screen between the welcome and the first pair. Stored with each response (`supabase/004-participant-details.sql`).

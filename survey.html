@@ -62,7 +62,7 @@
       <button class="option" id="optA"><span class="txt"></span><span class="key">Press 1</span></button>
       <button class="option" id="optB"><span class="txt"></span><span class="key">Press 2</span></button>
     </div>
-    <div class="skip"><button class="link" id="skipBtn">No preference, skip this pair</button></div>
+    <div class="skip"><button class="link" id="backBtn">Back</button><button class="link" id="skipBtn">No preference, skip this pair</button></div>
   </section>
 
   <section id="results" class="screen">
@@ -167,7 +167,10 @@
     const [a, b] = pairs[idx];
     $('optA').querySelector('.txt').textContent = messages[a];
     $('optB').querySelector('.txt').textContent = messages[b];
-    $('optA').classList.remove('picked'); $('optB').classList.remove('picked');
+    // when stepping back, show what they picked before so a slip is easy to fix
+    const earlier = current[analysis.key(a, b)];
+    $('optA').classList.toggle('picked', earlier === a); $('optB').classList.toggle('picked', earlier === b);
+    $('backBtn').style.visibility = idx > 0 ? '' : 'hidden';
     $('progText').textContent = 'Pair ' + (idx + 1) + ' of ' + pairs.length;
     $('progPct').textContent = Math.round(idx / pairs.length * 100) + '%';
     $('progBar').style.width = (idx / pairs.length * 100) + '%';
@@ -187,6 +190,7 @@
   $('optA').addEventListener('click', () => choose(0));
   $('optB').addEventListener('click', () => choose(1));
   $('skipBtn').addEventListener('click', () => choose(null));
+  $('backBtn').addEventListener('click', () => { if (locked || idx === 0) return; idx--; save(progressKey, { pairs, idx, current, about }); renderPair(); });
   document.addEventListener('keydown', e => {
     if (!$('survey').classList.contains('active')) return;
     if (e.key === '1') choose(0); if (e.key === '2') choose(1);

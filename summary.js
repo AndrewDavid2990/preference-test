@@ -94,7 +94,9 @@ const summary = {
   .toolbar button.primary { background: var(--ink); color: #f5f4f1; border-color: var(--ink); }
   .logo { height: 18px; width: auto; display: block; margin-bottom: 36px; }
   .logo svg { height: 18px; width: auto; display: block; }
-  .eyebrow, th, .tag { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .eyebrow { font-size: 14px; color: var(--muted); }
+  th { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .tag { font-size: 12px; color: var(--muted); }
   .label { font-size: 12px; font-weight: 600; color: var(--muted); }
   h1, h2 { font-family: "Gotham", "Gotham Bold", "Montserrat", sans-serif; color: var(--ink); margin: 0; }
   h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; margin: 6px 0 8px; }
@@ -117,11 +119,11 @@ const summary = {
   .rank .num { width: 150px; font-weight: 600; white-space: nowrap; }
   .meter { height: 6px; background: var(--line); margin-top: 6px; width: 120px; } .meter div { height: 100%; background: var(--red); }
   .band { font-size: 12px; font-weight: 400; color: var(--muted); }
-  .tag { color: var(--ink); margin-left: 6px; }
+  .tag { margin-left: 6px; }
   .segs td { font-size: 13px; } .segs .seg { font-weight: 600; width: 160px; }
   .grid { border: 1.5px solid var(--ink); width: auto; }
   .grid th, .grid td { padding: 7px 9px; border: 1px solid var(--line); text-align: center; white-space: nowrap; font-weight: 600; color: var(--ink); }
-  .grid th.rowhead { text-align: left; max-width: 260px; white-space: normal; font-weight: 500; font-size: 12px; letter-spacing: 0; text-transform: none; }
+  .grid th.rowhead { text-align: left; max-width: 260px; white-space: normal; font-weight: 500; font-size: 12px; }
   .grid td.self { background: var(--line); }
   ul { padding-left: 18px; margin: 0; } li { margin-bottom: 8px; }
   .method { color: var(--muted); font-size: 12.5px; }
