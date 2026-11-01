@@ -49,9 +49,9 @@ Until it is online, you can still open `index.html` directly from your computer 
 1. Open the admin page and sign in (you stay signed in on that browser until you sign out). **Change password** at the top of the page is where you set your own. Click **New test**. Name it (participants see the name), enter the messages, click **Create test**.
 2. Copy the participant link and send it out. Each participant answers every pair once; their progress is kept if they refresh, and the page remembers when they have finished.
 3. Watch results come in with **Refresh results**. The Consistency tab flags random clickers; hiding someone there drops them from every other view (hidden choices are remembered in your browser, not in the database).
-5. **Client summary** opens a one page, branded write up in a new tab: the verdict in plain language, the ranking with win rates and strength scores, the head to head grid, things to watch (divisive messages, skips, small samples), and a short note on method. Use **Save as PDF** to send it, or **Download** for a standalone web page that opens anywhere without a login. Remove simulated participants and hide junk responses first; the summary says if simulated data is included.
-6. **Close test** stops new responses (previews still work). **Export CSV** downloads every choice, one row per pair per participant.
-7. **Add 15 simulated** inserts fake participants so you can see how the views behave before real data arrives. **Remove simulated** deletes them again. They are marked as simulated everywhere.
+6. **Client summary** opens a one page, branded write up in a new tab: the verdict in plain language, the ranking with win rates and strength scores, the head to head grid, things to watch (divisive messages, skips, small samples), and a short note on method. Use **Save as PDF** to send it, or **Download** for a standalone web page that opens anywhere without a login. Remove simulated participants and hide junk responses first; the summary says if simulated data is included.
+7. **Close test** stops new responses (previews still work). **Export CSV** downloads every choice, one row per pair per participant.
+8. **Add 15 simulated** inserts fake participants so you can see how the views behave before real data arrives. **Remove simulated** deletes them again. They are marked as simulated everywhere.
 
 ## Good to know
 

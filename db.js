@@ -3,8 +3,8 @@
 // nothing to install. To swap the backend later, only this file needs to change.
 //
 // Tables (see supabase/schema.sql):
-//   tests      { id, name, scenario, question, messages: [string], closed, created_at }
-//   responses  { id, test_id, choices: { "i-j": winnerIndex | null }, simulated, created_at }
+//   tests      { id, name, scenario, question, messages: [string], segment_question, segment_options: [string], ask_email, closed, created_at }
+//   responses  { id, test_id, choices: { "i-j": winnerIndex | null }, segment, email, simulated, created_at }
 //
 // Permissions are enforced by the database, not here. Without a login (the participant page)
 // you can read tests and add responses. With a login (the admin page, see auth.js) you can do
@@ -42,7 +42,7 @@ const db = {
   /* tests */
   listTests() { return this.request("GET", "tests?select=*&order=created_at.desc"); },
   async getTest(id) { const rows = await this.request("GET", "tests?select=*&id=eq." + encodeURIComponent(id)); return rows[0] || null; },
-  async createTest(name, messages, scenario, question) { const rows = await this.request("POST", "tests", { name, messages, scenario, question }); return rows[0]; },
+  async createTest(fields) { const rows = await this.request("POST", "tests", fields); return rows[0]; },   // fields: name, messages, scenario, question, segment_question, segment_options, ask_email
   updateTest(id, fields) { return this.request("PATCH", "tests?id=eq." + encodeURIComponent(id), fields); },
   deleteTest(id) { return this.request("DELETE", "tests?id=eq." + encodeURIComponent(id)); },
 

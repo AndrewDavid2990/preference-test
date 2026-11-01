@@ -80,12 +80,19 @@
     <p class="crumb"><a href="./">All tests</a></p>
     <h1>New preference test</h1>
     <p class="lead">Enter 2 to 8 messages. Participants will see every pair (28 at most, about 2 minutes), pick one each time, and the results become a ranking. Messages cannot be edited once the test has responses, so check them now.</p>
-    <label class="field" for="testName">Test name (participants see this)</label>
+
+    <label class="field" for="testName">Name</label>
     <input class="text" id="testName" type="text" maxlength="120" placeholder="Homepage headline, round 1">
-    <label class="field" for="testScenario">Scenario (optional, shown before the first pair)</label>
+    <p class="hint under">Only you see the name. Participants get a generic welcome.</p>
+
+    <label class="field" for="testScenario">Scenario</label>
     <textarea class="text" id="testScenario" rows="3" maxlength="600" placeholder="Imagine you run marketing at a B2B software company and you are looking for help improving conversions on your website and landing pages."></textarea>
-    <label class="field" for="testQuestion">Question (shown above every pair)</label>
+    <p class="hint under">Optional. Sets the scene once, before the first pair.</p>
+
+    <label class="field" for="testQuestion">Question</label>
     <input class="text" id="testQuestion" type="text" maxlength="160" value="Which message do you prefer?">
+    <p class="hint under">Shown above every pair.</p>
+
     <label class="field">Messages</label>
     <div class="msg-list" id="msgList"></div>
     <div class="row" style="margin-bottom:28px">
@@ -93,7 +100,25 @@
       <span class="hint" id="countHint"></span>
       <button class="link" id="sampleBtn">Fill with sample headlines</button>
     </div>
-    <div class="row">
+    <h3>About the participant</h3>
+    <p class="note">Optional. Asked once, after the welcome screen and before the first pair. Segments let you compare results between groups of people.</p>
+
+    <label class="field" for="segQuestion">Segment question</label>
+    <input class="text" id="segQuestion" type="text" maxlength="160" placeholder="Which best describes you?">
+    <p class="hint under">Leave blank to skip.</p>
+
+    <label class="field" for="segOptions">Answers to choose from</label>
+    <textarea class="text" id="segOptions" rows="3" maxlength="600" placeholder="Founder or CEO&#10;Marketing&#10;Sales"></textarea>
+    <p class="hint under">One per line.</p>
+
+    <label class="field">Email address</label>
+    <div class="choices" id="askEmail">
+      <label><input type="radio" name="askEmail" value="off" checked> Do not ask</label>
+      <label><input type="radio" name="askEmail" value="optional"> Optional</label>
+      <label><input type="radio" name="askEmail" value="required"> Required</label>
+    </div>
+
+    <div class="row" style="margin-top:28px">
       <button class="btn primary" id="createBtn">Create test</button>
       <span class="hint" id="pairHint"></span>
     </div>
@@ -121,6 +146,7 @@
     <p class="small" style="margin:-10px 0 20px">Preview runs the survey without saving anything, so you can check it or show a client. Only send the participant link itself to real participants.</p>
 
     <div class="row">
+      <select class="btn" id="segmentFilter" style="display:none"></select>
       <button class="btn" id="refreshBtn">Refresh results</button>
       <button class="btn" id="closeBtn"></button>
       <button class="btn" id="summaryBtn">Client summary</button>
@@ -294,7 +320,10 @@
     const name = $('testName').value.trim() || 'Untitled test';
     $('createBtn').disabled = true;
     const scenario = $('testScenario').value.trim(), question = $('testQuestion').value.trim() || 'Which message do you prefer?';
-    try { const t = await db.createTest(name, readMessages(), scenario, question); location.href = '?test=' + t.id; }
+    const segment_options = $('segOptions').value.split('\n').map(x => x.trim()).filter(Boolean);
+    const segment_question = segment_options.length ? ($('segQuestion').value.trim() || 'Which best describes you?') : '';
+    const ask_email = document.querySelector('input[name="askEmail"]:checked').value;
+    try { const t = await db.createTest({ name, messages: readMessages(), scenario, question, segment_question, segment_options: segment_question ? segment_options : [], ask_email }); location.href = '?test=' + t.id; }
     catch (e) { showError(e); $('createBtn').disabled = false; }
   });
 
@@ -313,14 +342,22 @@
     $('shareUrl').value = url; $('previewLink').href = url + '&preview';
     $('briefScenario').textContent = test.scenario ? 'Scenario: ' + test.scenario : '';
     $('briefScenario').style.display = test.scenario ? '' : 'none';
-    $('briefQuestion').textContent = 'Question: ' + (test.question || 'Which message do you prefer?');
+    $('briefQuestion').textContent = 'Question: ' + (test.question || 'Which message do you prefer?')
+      + (test.segment_question ? ' · Segment: ' + test.segment_question : '') + (test.ask_email && test.ask_email !== 'off' ? ' · Email ' + test.ask_email : '');
+    const sf = $('segmentFilter');
+    if ((test.segment_options || []).length) {
+      sf.style.display = '';
+      sf.innerHTML = '<option value="">All segments</option>' + test.segment_options.map(o => '<option></option>').join('');
+      [...sf.options].slice(1).forEach((o, i) => { o.value = test.segment_options[i]; o.textContent = test.segment_options[i]; });
+      sf.innerHTML += '<option value="(none)">No answer</option>';
+    }
     await reloadResponses();
     show('group');
   }
   async function reloadResponses() {
     const rows = await db.listResponses(test.id);
     const hidden = loadHidden();
-    participants = rows.map(r => ({ id: r.id, choices: r.choices, simulated: r.simulated, hidden: hidden.has(r.id), created_at: r.created_at }));
+    participants = rows.map(r => ({ id: r.id, choices: r.choices, simulated: r.simulated, hidden: hidden.has(r.id), created_at: r.created_at, segment: r.segment || '', email: r.email || '' }));
     renderStatus();
     rerenderKeepingTab();
   }
@@ -341,7 +378,8 @@
   });
   $('simBtn').addEventListener('click', async () => {
     const sim = analysis.simulate(messages.length, 15, latent); latent = sim.latent;
-    try { await db.addResponses(sim.choices.map(c => ({ test_id: test.id, choices: c, simulated: true }))); await reloadResponses(); } catch (e) { showError(e); }
+    const opts = test.segment_options || [];
+    try { await db.addResponses(sim.choices.map(c => ({ test_id: test.id, choices: c, simulated: true, segment: opts.length ? opts[Math.floor(Math.random() * opts.length)] : '' }))); await reloadResponses(); } catch (e) { showError(e); }
   });
   $('unsimBtn').addEventListener('click', async () => {
     try { await db.deleteSimulated(test.id); await reloadResponses(); } catch (e) { showError(e); }
@@ -352,19 +390,19 @@
   });
   $('exportBtn').addEventListener('click', exportCsv);
   $('summaryBtn').addEventListener('click', () => {
-    const parts = participants.filter(p => !p.hidden);
+    const parts = included();
     if (!parts.length) return showError(new Error('No responses to summarise yet.'));
-    summary.open(test, parts, participants.length - parts.length);
+    summary.open(test, parts, participants.filter(p => p.hidden).length, segmentChoice());
   });
 
   function exportCsv() {
     const n = messages.length, q = s => '"' + String(s).replace(/"/g, '""') + '"';
-    const lines = [['participant', 'submitted', 'simulated', 'included', 'cycle_rate', 'message_a', 'message_b', 'winner'].join(',')];
+    const lines = [['participant', 'submitted', 'segment', 'email', 'simulated', 'included', 'cycle_rate', 'message_a', 'message_b', 'winner'].join(',')];
     participants.forEach((pt, i) => {
       const rate = analysis.cycleRate(n, pt.choices).toFixed(3);
       analysis.allPairs(n).forEach(([a, b]) => {
         const k = pt.choices[analysis.key(a, b)];
-        lines.push([i + 1, q(pt.created_at), pt.simulated ? 'yes' : 'no', pt.hidden ? 'no' : 'yes', rate, q(messages[a]), q(messages[b]), k === null || k === undefined ? 'skipped' : q(messages[k])].join(','));
+        lines.push([i + 1, q(pt.created_at), q(pt.segment), q(pt.email), pt.simulated ? 'yes' : 'no', pt.hidden ? 'no' : 'yes', rate, q(messages[a]), q(messages[b]), k === null || k === undefined ? 'skipped' : q(messages[k])].join(','));
       });
     });
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
@@ -387,10 +425,18 @@
     return li;
   }
 
+  // The participants the views are built from: not hidden, and in the chosen segment if one is picked.
+  function segmentChoice() { return $('segmentFilter').style.display === 'none' ? '' : $('segmentFilter').value; }
+  function included() {
+    const seg = segmentChoice();
+    return participants.filter(p => !p.hidden && (!seg || (seg === '(none)' ? !p.segment : p.segment === seg)));
+  }
+  $('segmentFilter').addEventListener('change', rerenderKeepingTab);
+
   function renderGroup() {
-    const parts = participants.filter(p => !p.hidden), n = messages.length, P = parts.length;
-    const simCount = parts.filter(p => p.simulated).length, hiddenCount = participants.length - P;
-    $('groupLead').textContent = P + ' participant' + (P === 1 ? '' : 's') + (simCount ? ' (' + simCount + ' simulated)' : '') + (hiddenCount ? ', ' + hiddenCount + ' hidden' : '') + ', ' + n + ' messages, ' + (n * (n - 1) / 2) + ' pairs each.';
+    const parts = included(), n = messages.length, P = parts.length;
+    const simCount = parts.filter(p => p.simulated).length, hiddenCount = participants.filter(p => p.hidden).length, seg = segmentChoice();
+    $('groupLead').textContent = P + ' participant' + (P === 1 ? '' : 's') + (seg ? ' in "' + (seg === '(none)' ? 'No answer' : seg) + '"' : '') + (simCount ? ' (' + simCount + ' simulated)' : '') + (hiddenCount ? ', ' + hiddenCount + ' hidden' : '') + ', ' + n + ' messages, ' + (n * (n - 1) / 2) + ' pairs each.';
     $('unsimBtn').disabled = !participants.some(p => p.simulated);
     renderConsistency();
     if (!P) { ['gRank', 'h2h', 'bt', 'condorcet', 'toptwo', 'spread'].forEach(id => $(id).innerHTML = ''); $('gRank').innerHTML = '<li class="empty">No responses yet. Share the participant link, or add simulated participants to see how the views work.</li>'; return; }
@@ -495,7 +541,7 @@
       if (pt.hidden) li.className = 'hidden';
       const skipped = Object.values(pt.choices).filter(v => v === null).length;
       li.innerHTML = '<span></span><span class="small"></span><span></span><span class="acts"><button class="btn" type="button"></button><button class="btn danger" type="button">Delete</button></span>';
-      li.children[0].textContent = 'Participant ' + (q + 1) + (pt.simulated ? ' (simulated)' : '');
+      li.children[0].textContent = 'Participant ' + (q + 1) + (pt.simulated ? ' (simulated)' : '') + (pt.segment ? ' · ' + pt.segment : '') + (pt.email ? ' · ' + pt.email : '');
       li.children[0].title = fmtDate(pt.created_at);
       li.children[1].textContent = cycles + ' cycle' + (cycles === 1 ? '' : 's') + ' in ' + triples + ' triples' + (skipped ? ', ' + skipped + ' skipped' : '');
       li.children[2].textContent = rate > 0.15 ? 'Check this one' : rate > 0.07 ? 'Some noise' : 'Consistent';

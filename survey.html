@@ -29,13 +29,29 @@
   </section>
 
   <section id="intro" class="screen">
-    <h1 id="introTitle"></h1>
+    <h1>You have been invited to a quick survey</h1>
     <p class="scenario" id="introScenario"></p>
     <p class="lead">You will see pairs of short messages, one pair at a time, and pick one each time. There are no right answers, go with your gut.</p>
     <p class="note" id="introCount"></p>
     <div class="row">
       <button class="btn primary" id="beginBtn">Start</button>
     </div>
+  </section>
+
+  <section id="about" class="screen">
+    <h2>One quick thing first</h2>
+    <form id="aboutForm">
+      <div id="segBlock">
+        <p class="question" id="segQuestion"></p>
+        <div class="choices" id="segChoices"></div>
+      </div>
+      <div id="emailBlock">
+        <label class="field" for="email" id="emailLabel">Email address</label>
+        <input class="text" id="email" type="email" autocomplete="email" inputmode="email">
+      </div>
+      <p class="alert" id="aboutError"></p>
+      <div class="row"><button class="btn primary" type="submit">Continue</button></div>
+    </form>
   </section>
 
   <section id="survey" class="screen">
@@ -76,6 +92,7 @@
   const save = (k, v) => { if (preview) return; try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
   let test = null, messages = [], pairs = [], idx = 0, current = {}, locked = false;
+  let about = { segment: '', email: '' };   // answers from the "about you" screen, saved with the response
 
   function message(title, body) { $('msgTitle').textContent = title; $('msgBody').textContent = body; show('message'); }
 
@@ -93,7 +110,6 @@
     if (!test) return message('Test not found', 'This link does not match any test. It may have been deleted.');
     if (test.closed && !preview) return message('This test is closed', 'Thanks for your interest. It is no longer taking responses.');
     messages = test.messages;
-    document.title = test.name;
     $('question').textContent = test.question || 'Which message do you prefer?';
 
     const done = load(doneKey);
@@ -101,10 +117,9 @@
 
     const progress = load(progressKey);
     if (progress && progress.pairs.length === analysis.allPairs(messages.length).length) {
-      pairs = progress.pairs; idx = progress.idx; current = progress.current;
+      pairs = progress.pairs; idx = progress.idx; current = progress.current; about = progress.about || about;
       show('survey'); renderPair();
     } else {
-      $('introTitle').textContent = test.name;
       $('introScenario').textContent = test.scenario || '';
       $('introScenario').style.display = test.scenario ? '' : 'none';
       const pairCount = analysis.allPairs(messages.length).length;
@@ -113,10 +128,38 @@
     }
   }
 
+  const asksSegment = () => !!(test.segment_question && (test.segment_options || []).length);
+  const asksEmail = () => test.ask_email === 'optional' || test.ask_email === 'required';
+
+  // After the welcome screen: the "about you" questions if the test has any, otherwise straight in.
+  function begin() { asksSegment() || asksEmail() ? showAbout() : startSurvey(); }
+  function showAbout() {
+    $('segBlock').style.display = asksSegment() ? '' : 'none';
+    $('emailBlock').style.display = asksEmail() ? '' : 'none';
+    if (asksSegment()) {
+      $('segQuestion').textContent = test.segment_question;
+      const box = $('segChoices'); box.innerHTML = '';
+      test.segment_options.forEach(opt => {
+        const l = document.createElement('label'), r = document.createElement('input');
+        r.type = 'radio'; r.name = 'segment'; r.value = opt; l.append(r, document.createTextNode(' ' + opt)); box.appendChild(l);
+      });
+    }
+    if (asksEmail()) { $('emailLabel').textContent = test.ask_email === 'required' ? 'Email address' : 'Email address (optional)'; $('email').required = test.ask_email === 'required'; }
+    show('about');
+  }
+  $('aboutForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const picked = document.querySelector('input[name="segment"]:checked');
+    if (asksSegment() && !picked) { $('aboutError').textContent = 'Please pick one answer.'; $('aboutError').classList.add('on'); return; }
+    $('aboutError').classList.remove('on');
+    about = { segment: picked ? picked.value : '', email: asksEmail() ? $('email').value.trim() : '' };
+    startSurvey();
+  });
+
   function startSurvey() {
     pairs = analysis.randomPairOrder(messages.length);
     idx = 0; current = {};
-    save(progressKey, { pairs, idx, current });
+    save(progressKey, { pairs, idx, current, about });
     show('survey'); renderPair();
   }
   function renderPair() {
@@ -137,7 +180,7 @@
     const delay = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180;
     setTimeout(() => {
       idx++;
-      save(progressKey, { pairs, idx, current });
+      save(progressKey, { pairs, idx, current, about });
       if (idx < pairs.length) renderPair(); else finish();
     }, delay);
   }
@@ -152,7 +195,7 @@
   async function finish() {
     if (!preview) {
       try {
-        await db.addResponses([{ test_id: testId, choices: current, simulated: false }]);
+        await db.addResponses([{ test_id: testId, choices: current, simulated: false, segment: about.segment, email: about.email }]);
       } catch (e) {
         locked = false;
         return message('Could not save your answers', e.message + ' Please check your connection and reload this page; your answers are kept until then.');
@@ -181,8 +224,8 @@
     show('results');
   }
 
-  $('beginBtn').addEventListener('click', startSurvey);
-  $('againBtn').addEventListener('click', startSurvey);
+  $('beginBtn').addEventListener('click', begin);
+  $('againBtn').addEventListener('click', begin);
 
   init();
 </script>

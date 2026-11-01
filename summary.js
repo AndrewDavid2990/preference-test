@@ -7,7 +7,7 @@ const summary = {
   logo: "",   // the logo file's contents, fetched once so it can be inlined in the summary
 
   // Build the whole page as a string. Everything is inlined so the downloaded file stands alone.
-  build(test, parts, hiddenCount) {
+  build(test, parts, hiddenCount, segment) {
     const n = test.messages.length, st = analysis.groupStats(n, parts);
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const pct = x => Math.round(x * 100) + "%";
@@ -54,6 +54,19 @@ const summary = {
         const style = r >= 0.5 ? `background:color-mix(in srgb, #d93637 ${Math.round(a * 55)}%, #fff)` : "background:#f5f4f1;color:#9b9893";
         return `<td style="${style}">${st.N[i][j] ? pct(r) : ""}</td>`;
       }).join("") + "</tr>").join("") + "</table>";
+
+    /* by segment: top three per group, when the test has segments and no filter is on */
+    let bySegment = "";
+    const segs = (test.segment_options || []).filter(o => parts.some(p => p.segment === o));
+    if (!segment && segs.length >= 2) {
+      const rows = segs.map(o => {
+        const group = parts.filter(p => p.segment === o), gs = analysis.groupStats(n, group);
+        return `<tr><td class="seg">${esc(o)}<div class="band">${group.length} participant${group.length === 1 ? "" : "s"}</div></td>` +
+          [0, 1, 2].map(k => gs.order[k] === undefined ? "<td></td>" : `<td>${msg(gs.order[k])}<div class="band">${pct(gs.rate(gs.order[k]))} win rate</div></td>`).join("") + "</tr>";
+      }).join("");
+      bySegment = `<h2>By segment</h2><p class="method">Top three messages within each group${segs.some(o => parts.filter(p => p.segment === o).length < 5) ? ". Small groups are indicative only" : ""}.</p>
+        <table class="rank segs"><tr><th>Segment</th><th>#1</th><th>#2</th><th>#3</th></tr>${rows}</table>`;
+    }
 
     /* things to watch */
     const notes = [];
@@ -105,6 +118,7 @@ const summary = {
   .meter { height: 6px; background: var(--line); margin-top: 6px; width: 120px; } .meter div { height: 100%; background: var(--red); }
   .band { font-size: 12px; font-weight: 400; color: var(--muted); }
   .tag { color: var(--ink); margin-left: 6px; }
+  .segs td { font-size: 13px; } .segs .seg { font-weight: 600; width: 160px; }
   .grid { border: 1.5px solid var(--ink); width: auto; }
   .grid th, .grid td { padding: 7px 9px; border: 1px solid var(--line); text-align: center; white-space: nowrap; font-weight: 600; color: var(--ink); }
   .grid th.rowhead { text-align: left; max-width: 260px; white-space: normal; font-weight: 500; font-size: 12px; letter-spacing: 0; text-transform: none; }
@@ -123,7 +137,7 @@ const summary = {
   <div class="logo">${logo}</div>
   <div class="eyebrow">Preference test summary</div>
   <h1>${esc(test.name)}</h1>
-  <p class="meta">${st.P} participant${st.P === 1 ? "" : "s"} · ${n} messages · ${n * (n - 1) / 2} pairs each · ${date}</p>
+  <p class="meta">${st.P} participant${st.P === 1 ? "" : "s"}${segment ? ` in "${esc(segment === "(none)" ? "No answer" : segment)}"` : ""} · ${n} messages · ${n * (n - 1) / 2} pairs each · ${date}</p>
   ${test.scenario || test.question ? `<div class="brief">${test.scenario ? `<p><span class="label">Scenario</span><br>${esc(test.scenario)}</p>` : ""}<p><span class="label">Question</span><br>${esc(test.question || "Which message do you prefer?")}</p></div>` : ""}
 
   <div class="verdict${headline === "Clear winner" || headline === "Likely winner" ? "" : " soft"}">
@@ -141,6 +155,8 @@ const summary = {
   <h2>Head to head</h2>
   <p class="method">Share of participants who picked the row message over the column message. Deeper red means the row won that matchup more often.</p>
   ${grid}
+
+  ${bySegment}
 
   ${notes.length ? `<h2>Things to watch</h2><ul>${notes.join("")}</ul>` : ""}
 
@@ -171,8 +187,8 @@ const summary = {
   // rather than written into a blank tab, so the tab keeps this site's identity and its own
   // Download button is allowed to work. Must be called directly from a click so pop up
   // blockers allow the new tab.
-  open(test, parts, hiddenCount) {
-    const html = this.build(test, parts, hiddenCount);
+  open(test, parts, hiddenCount, segment) {
+    const html = this.build(test, parts, hiddenCount, segment);
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
     const w = window.open(url, "_blank");
     if (!w) throw new Error("The browser blocked the new tab. Allow pop ups for this site and try again.");

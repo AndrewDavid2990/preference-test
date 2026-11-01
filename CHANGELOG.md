@@ -2,6 +2,14 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: participant details
+
+- Tests can ask participants one segment question (pick one answer from a list you define) and for an email address (off, optional or required), on a single screen between the welcome and the first pair. Stored with each response (`supabase/004-participant-details.sql`).
+- Results page: a segment dropdown narrows every tab and the client summary to one group. The Consistency list shows each participant's segment and email. CSV export has segment and email columns.
+- Client summary: a "By segment" table with the top three messages per group when no filter is applied.
+- Participants no longer see the test name. The welcome reads "You have been invited to a quick survey", and the setup page says the name is private.
+- Setup form labels are short (Name, Scenario, Question, Messages) with a one line hint underneath instead of explanations in brackets.
+
 ## 2026-11-01: client summary
 
 - Red is no longer used as a "good" signal. Verdict panels (winner check tabs, summary) use an Ink bar when the news is strong and a light gray bar when it is soft; the #1 rank is Ink. Red stays for the wordmark, the picked card, the scenario panel and data visuals only.
