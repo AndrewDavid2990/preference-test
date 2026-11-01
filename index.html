@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preference test</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #f6f5f2; --surface: #ffffff; --ink: #1c1b19; --muted: #6b6965; --line: #dcd9d3;
+    --accent: #1f4ed8; --accent-ink: #ffffff; --win: #dbe6ff; --warn: #b4530a; --warn-bg: #fdebd9; --good: #1d7a3f; --good-bg: #dff3e6;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #161614; --surface: #222220; --ink: #f0eee9; --muted: #a09d96; --line: #3a3936;
+      --accent: #6b8cff; --accent-ink: #0f1424; --win: #26324f; --warn: #f0a060; --warn-bg: #3d2a18; --good: #6fd08f; --good-bg: #1b3324;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161614; --surface: #222220; --ink: #f0eee9; --muted: #a09d96; --line: #3a3936;
+    --accent: #6b8cff; --accent-ink: #0f1424; --win: #26324f; --warn: #f0a060; --warn-bg: #3d2a18; --good: #6fd08f; --good-bg: #1b3324;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Instrument Sans", "Helvetica Neue", Arial, sans-serif; font-size: 17px; line-height: 1.45; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
+  h2 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+  h3 { font-size: 18px; font-weight: 600; margin: 28px 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; max-width: 62ch; }
+  p.note { color: var(--muted); font-size: 15px; margin: 0 0 14px; max-width: 62ch; }
+  .screen { display: none; } .screen.active { display: block; }
+  .msg-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .msg-row { display: flex; gap: 8px; }
+  .msg-row input { flex: 1; font: inherit; padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+  .msg-row input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .icon-btn { font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 8px; width: 42px; cursor: pointer; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .btn { font: inherit; font-weight: 600; padding: 12px 20px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .hint { color: var(--muted); font-size: 14px; }
+  .progress { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 28px; }
+  .bar > div { height: 100%; background: var(--accent); width: 0; transition: width .25s ease; }
+  @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
+  .question { font-size: 20px; font-weight: 500; margin: 0 0 18px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+  .option { display: flex; flex-direction: column; justify-content: space-between; gap: 20px; min-height: 200px; padding: 24px; text-align: left; font: inherit; font-size: 19px; line-height: 1.4; background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
+  .option:hover { border-color: var(--accent); }
+  .option .key { font-size: 13px; color: var(--muted); }
+  .option.picked { border-color: var(--accent); background: var(--win); }
+  .skip { margin-top: 18px; text-align: center; }
+  .link { background: none; border: 0; font: inherit; color: var(--muted); text-decoration: underline; cursor: pointer; padding: 6px; }
+  .rank { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 8px; }
+  .rank li { display: grid; grid-template-columns: 36px 1fr 150px; gap: 12px; align-items: center; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  @media (max-width: 520px) { .rank li { grid-template-columns: 30px 1fr; } .rank .stat { grid-column: 2; } }
+  .rank .pos { font-weight: 600; color: var(--muted); }
+  .rank li:first-child .pos { color: var(--accent); }
+  .rank .text { font-weight: 500; }
+  .rank .stat { font-size: 14px; color: var(--muted); }
+  .meter { height: 6px; background: var(--line); border-radius: 3px; margin-top: 5px; overflow: hidden; }
+  .meter div { height: 100%; background: var(--accent); }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 18px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  .tab { font: inherit; font-size: 15px; font-weight: 500; padding: 8px 12px; border-radius: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; }
+  .tab.on { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+  .view { display: none; } .view.on { display: block; }
+  .badge { display: inline-block; padding: 10px 14px; border-radius: 8px; font-size: 15px; margin: 6px 0 14px; }
+  .badge.good { background: var(--good-bg); color: var(--good); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 10px; border: 1px solid var(--line); text-align: center; white-space: nowrap; }
+  th { font-weight: 500; color: var(--muted); }
+  th.rowhead { text-align: left; color: var(--ink); max-width: 240px; white-space: normal; font-weight: 500; }
+  td.cell { font-weight: 600; min-width: 56px; }
+  td.self { background: var(--line); }
+  .legend { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  .plist { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .plist li { display: grid; grid-template-columns: 1fr 180px 110px 90px; gap: 12px; align-items: center; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: 15px; }
+  .plist li.hidden { opacity: .5; }
+  .plist li.hidden > span:first-child { text-decoration: line-through; }
+  .plist .btn { padding: 6px 10px; font-size: 13px; font-weight: 500; }
+  @media (max-width: 560px) { .plist li { grid-template-columns: 1fr 1fr; } }
+  .flag { color: var(--warn); font-weight: 600; }
+  .ok { color: var(--good); font-weight: 600; }
+  .hist { display: flex; gap: 3px; align-items: flex-end; height: 34px; }
+  .hist div { flex: 1; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 2px; opacity: .85; }
+  .ci { position: relative; height: 10px; background: var(--line); border-radius: 5px; }
+  .ci .range { position: absolute; top: 2px; height: 6px; background: var(--accent); opacity: .35; border-radius: 3px; }
+  .ci .pt { position: absolute; top: 0; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; margin-left: -5px; }
+  .small { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section id="setup" class="screen active">
+    <h1>Set up a preference test</h1>
+    <p class="lead">Enter up to 8 messages. Participants will see every pair (28 at most, about 2 minutes), pick one each time, and the results become a ranking.</p>
+    <div class="msg-list" id="msgList"></div>
+    <div class="row" style="margin-bottom:28px">
+      <button class="btn" id="addMsg">Add message</button>
+      <span class="hint" id="countHint"></span>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="startBtn">Start survey</button>
+      <button class="btn" id="simBtn">Simulate 15 participants</button>
+      <span class="hint" id="pairHint"></span>
+    </div>
+  </section>
+
+  <section id="survey" class="screen">
+    <div class="progress"><span id="progText"></span><span id="progPct"></span></div>
+    <div class="bar"><div id="progBar"></div></div>
+    <p class="question">Which message do you prefer?</p>
+    <div class="pair">
+      <button class="option" id="optA"><span class="txt"></span><span class="key">Press 1</span></button>
+      <button class="option" id="optB"><span class="txt"></span><span class="key">Press 2</span></button>
+    </div>
+    <div class="skip"><button class="link" id="skipBtn">No preference, skip this pair</button></div>
+  </section>
+
+  <section id="results" class="screen">
+    <h2>Your ranking</h2>
+    <p class="lead" id="resultsLead"></p>
+    <ol class="rank" id="rankList"></ol>
+    <div class="row">
+      <button class="btn primary" id="groupBtn">See group results</button>
+      <button class="btn" id="againBtn">Add another participant</button>
+      <button class="btn" id="editBtn">Edit messages</button>
+    </div>
+  </section>
+
+  <section id="group" class="screen">
+    <h2>Group results</h2>
+    <p class="lead" id="groupLead"></p>
+    <div class="row">
+      <button class="btn" id="addBtn">Add a participant</button>
+      <button class="btn" id="simMoreBtn">Add 15 simulated</button>
+      <button class="btn" id="resetBtn">Start over</button>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-v="v-rank">Ranking</button>
+      <button class="tab" data-v="v-h2h">Head to head</button>
+      <button class="tab" data-v="v-bt">Strength scores</button>
+      <button class="tab" data-v="v-winner">Winner check</button>
+      <button class="tab" data-v="v-spread">Polarization</button>
+      <button class="tab" data-v="v-consist">Consistency</button>
+    </div>
+
+    <div class="view on" id="v-rank">
+      <p class="note">Total wins across all participants. In a full round-robin this is the same as average rank, so it's a fair headline number.</p>
+      <ol class="rank" id="gRank"></ol>
+    </div>
+
+    <div class="view" id="v-h2h">
+      <p class="note">Share of participants who picked the row message over the column message. Look for a top message that loses to one specific rival.</p>
+      <div class="scroll"><table id="h2h"></table></div>
+      <p class="legend">Darker blue means the row message won that matchup more often. Based only on pairs that were not skipped.</p>
+    </div>
+
+    <div class="view" id="v-bt">
+      <p class="note">Bradley-Terry strength scores, shown as each message's chance of beating an average message in this set. The band is a 90% interval from resampling participants: overlapping bands mean the messages are not clearly separated.</p>
+      <ol class="rank" id="bt"></ol>
+    </div>
+
+    <div class="view" id="v-winner">
+      <p class="note">Two checks on whether you can call a winner.</p>
+      <h3>Does the top message beat every other message head to head?</h3>
+      <div id="condorcet"></div>
+      <h3>Is first place clearly ahead of second?</h3>
+      <div id="toptwo"></div>
+    </div>
+
+    <div class="view" id="v-spread">
+      <p class="note">Where each message landed in every participant's personal ranking. A message that is loved by some and hated by others looks average on total wins but shows up here as a split.</p>
+      <ol class="rank" id="spread"></ol>
+    </div>
+
+    <div class="view" id="v-consist">
+      <p class="note">If a participant prefers A over B and B over C, they should prefer A over C. Each violation is a cycle. Lots of cycles means random clicking or messages too similar to judge. Hide a participant to drop them from every other view.</p>
+      <div class="row" style="margin-bottom:14px">
+        <button class="btn" id="hideFlagged">Hide all flagged</button>
+        <button class="btn" id="includeAll">Include everyone</button>
+      </div>
+      <ul class="plist" id="consist"></ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const MAX = 8;
+  const sample = [
+    "Turn more of your traffic into pipeline",
+    "CRO for B2B SaaS teams who have outgrown guesswork",
+    "Find out exactly why visitors are not converting",
+    "Run tests that actually move the number your CEO cares about",
+    "Your website should be your best SDR",
+    "Stop redesigning. Start testing.",
+    "More demos from the traffic you already have",
+    "Your traffic is fine. Your conversion rate is not."
+  ];
+
+  let messages = [], pairs = [], idx = 0, locked = false;
+  let current = null;        // choices for the participant in progress: key "i-j" -> winner index or null
+  let participants = [];     // array of {choices, simulated}
+
+  const $ = id => document.getElementById(id);
+  const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0,0); };
+  const key = (i, j) => i < j ? i + '-' + j : j + '-' + i;
+  const pct = x => Math.round(x * 100) + '%';
+
+  /* ---------- setup ---------- */
+  function renderList(values) {
+    const list = $('msgList'); list.innerHTML = '';
+    values.forEach((v, i) => {
+      const row = document.createElement('div'); row.className = 'msg-row';
+      const input = document.createElement('input');
+      input.type = 'text'; input.value = v; input.placeholder = 'Message ' + (i + 1); input.maxLength = 200;
+      input.addEventListener('input', updateHints);
+      const del = document.createElement('button');
+      del.className = 'icon-btn'; del.type = 'button'; del.textContent = '×'; del.title = 'Remove';
+      del.addEventListener('click', () => { row.remove(); updateHints(); });
+      row.append(input, del); list.appendChild(row);
+    });
+    updateHints();
+  }
+  const readMessages = () => [...document.querySelectorAll('#msgList input')].map(i => i.value.trim()).filter(Boolean);
+  function updateHints() {
+    const rows = document.querySelectorAll('#msgList input').length, n = readMessages().length;
+    $('countHint').textContent = rows + ' of ' + MAX + ' slots used';
+    $('addMsg').disabled = rows >= MAX;
+    const p = n * (n - 1) / 2;
+    $('pairHint').textContent = n < 2 ? 'Enter at least 2 messages' : p + ' comparisons';
+    $('startBtn').disabled = n < 2; $('simBtn').disabled = n < 2;
+  }
+  $('addMsg').addEventListener('click', () => {
+    const vals = [...document.querySelectorAll('#msgList input')].map(i => i.value);
+    if (vals.length < MAX) { vals.push(''); renderList(vals); const ins = document.querySelectorAll('#msgList input'); ins[ins.length - 1].focus(); }
+  });
+  function setMessages(msgs) {
+    if (msgs.join('\u0001') !== messages.join('\u0001')) participants = [];
+    messages = msgs;
+  }
+  $('startBtn').addEventListener('click', () => { setMessages(readMessages()); startSurvey(); });
+  $('simBtn').addEventListener('click', () => { setMessages(readMessages()); simulate(15); renderGroup(); show('group'); });
+
+  /* ---------- survey ---------- */
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function allPairs() { const p = []; for (let i = 0; i < messages.length; i++) for (let j = i + 1; j < messages.length; j++) p.push([i, j]); return p; }
+
+  function startSurvey() {
+    pairs = shuffle(allPairs().map(([i, j]) => Math.random() < 0.5 ? [i, j] : [j, i]));
+    idx = 0; current = {};
+    show('survey'); renderPair();
+  }
+  function renderPair() {
+    locked = false;
+    const [a, b] = pairs[idx];
+    $('optA').querySelector('.txt').textContent = messages[a];
+    $('optB').querySelector('.txt').textContent = messages[b];
+    $('optA').classList.remove('picked'); $('optB').classList.remove('picked');
+    $('progText').textContent = 'Pair ' + (idx + 1) + ' of ' + pairs.length;
+    $('progPct').textContent = Math.round(idx / pairs.length * 100) + '%';
+    $('progBar').style.width = (idx / pairs.length * 100) + '%';
+  }
+  function choose(side) {
+    if (locked) return; locked = true;
+    const [a, b] = pairs[idx];
+    current[key(a, b)] = side === null ? null : (side === 0 ? a : b);
+    if (side !== null) $(side === 0 ? 'optA' : 'optB').classList.add('picked');
+    const delay = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180;
+    setTimeout(() => { idx++; if (idx < pairs.length) renderPair(); else finishParticipant(); }, delay);
+  }
+  $('optA').addEventListener('click', () => choose(0));
+  $('optB').addEventListener('click', () => choose(1));
+  $('skipBtn').addEventListener('click', () => choose(null));
+  document.addEventListener('keydown', e => {
+    if (!$('survey').classList.contains('active')) return;
+    if (e.key === '1') choose(0); if (e.key === '2') choose(1);
+  });
+
+  /* ---------- per-participant math ---------- */
+  function winsOf(choices) {
+    const w = messages.map(() => 0), p = messages.map(() => 0);
+    allPairs().forEach(([i, j]) => { const k = choices[key(i, j)]; if (k === null || k === undefined) return; w[k]++; p[i]++; p[j]++; });
+    return { w, p };
+  }
+  function ranksOf(choices) {   // average rank for ties, 1 = best
+    const { w } = winsOf(choices);
+    const order = messages.map((_, i) => i).sort((a, b) => w[b] - w[a]);
+    const r = [];
+    let pos = 0;
+    while (pos < order.length) {
+      let end = pos; while (end + 1 < order.length && w[order[end + 1]] === w[order[pos]]) end++;
+      const avg = (pos + end) / 2 + 1;
+      for (let q = pos; q <= end; q++) r[order[q]] = avg;
+      pos = end + 1;
+    }
+    return r;
+  }
+  function cyclesOf(choices) {
+    const n = messages.length; let cycles = 0, triples = 0;
+    const beats = (x, y) => choices[key(x, y)] === x;
+    const decided = (x, y) => choices[key(x, y)] !== null && choices[key(x, y)] !== undefined;
+    for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) for (let c = b + 1; c < n; c++) {
+      if (!(decided(a, b) && decided(b, c) && decided(a, c))) continue;
+      triples++;
+      if ((beats(a, b) && beats(b, c) && beats(c, a)) || (beats(b, a) && beats(c, b) && beats(a, c))) cycles++;
+    }
+    return { cycles, triples };
+  }
+
+  function finishParticipant() {
+    participants.push({ choices: current, simulated: false });
+    const { w, p } = winsOf(current);
+    const rows = messages.map((m, i) => ({ m, w: w[i], p: p[i], rate: p[i] ? w[i] / p[i] : 0 })).sort((x, y) => y.rate - x.rate);
+    const list = $('rankList'); list.innerHTML = '';
+    rows.forEach((r, i) => list.appendChild(rankRow(i + 1, r.m, r.p ? r.w + ' of ' + r.p + ' wins' : 'not rated', r.rate)));
+    const skipped = pairs.length - w.reduce((s, x) => s + x, 0);
+    $('resultsLead').textContent = 'Ranked by how often each message won its matchups' + (skipped ? ' (' + skipped + ' skipped).' : '.');
+    show('results');
+  }
+  function rankRow(pos, text, stat, frac) {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="pos"></span><span class="text"></span><span class="stat"><span class="n"></span><div class="meter"><div></div></div></span>';
+    li.querySelector('.pos').textContent = pos; li.querySelector('.text').textContent = text;
+    li.querySelector('.n').textContent = stat; li.querySelector('.meter div').style.width = Math.round(frac * 100) + '%';
+    return li;
+  }
+  $('againBtn').addEventListener('click', startSurvey);
+  $('editBtn').addEventListener('click', () => { renderList(messages); show('setup'); });
+  $('groupBtn').addEventListener('click', () => { renderGroup(); show('group'); });
+  $('addBtn').addEventListener('click', startSurvey);
+  $('simMoreBtn').addEventListener('click', () => { simulate(15); renderGroup(); });
+  $('resetBtn').addEventListener('click', () => { participants = []; renderList(messages); show('setup'); });
+  $('tabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab'); if (!t) return;
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === t.dataset.v));
+  });
+
+  /* ---------- simulation ---------- */
+  let latent = null;
+  function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function simulate(count) {
+    const n = messages.length;
+    if (!latent || latent.length !== n) {
+      latent = messages.map(() => gauss() * 1.1);
+      latent.split = n >= 4 ? 1 : -1;   // message index 1 is polarizing in the simulation
+    }
+    for (let p = 0; p < count; p++) {
+      const random = Math.random() < 0.08;
+      const side = Math.random() < 0.5 ? 1 : -1;
+      const s = latent.map((v, i) => v + gauss() * 0.5 + (i === latent.split ? side * 1.8 : 0));
+      const choices = {};
+      allPairs().forEach(([i, j]) => {
+        if (Math.random() < 0.02) { choices[key(i, j)] = null; return; }
+        const pi = random ? 0.5 : 1 / (1 + Math.exp(-(s[i] - s[j]) * 1.6));
+        choices[key(i, j)] = Math.random() < pi ? i : j;
+      });
+      participants.push({ choices, simulated: true });
+    }
+  }
+
+  /* ---------- group math ---------- */
+  function h2hMatrix(parts) {
+    const n = messages.length;
+    const M = Array.from({ length: n }, () => Array(n).fill(0)), N = Array.from({ length: n }, () => Array(n).fill(0));
+    parts.forEach(pt => allPairs().forEach(([i, j]) => {
+      const k = pt.choices[key(i, j)]; if (k === null || k === undefined) return;
+      N[i][j]++; N[j][i]++; if (k === i) M[i][j]++; else M[j][i]++;
+    }));
+    return { M, N };
+  }
+  function bradleyTerry(M, N) {
+    const n = M.length; let p = Array(n).fill(1);
+    const W = M.map(r => r.reduce((a, b) => a + b, 0));
+    for (let it = 0; it < 200; it++) {
+      const np = p.map((_, i) => {
+        let d = 0; for (let j = 0; j < n; j++) if (j !== i) d += N[i][j] / (p[i] + p[j]);
+        return d ? Math.max(W[i], 0.25) / d : p[i];
+      });
+      const gm = Math.exp(np.reduce((a, b) => a + Math.log(b), 0) / n);
+      p = np.map(x => x / gm);
+    }
+    return p;   // geometric mean 1, so p_i/(p_i+1) = chance of beating an average message
+  }
+  function binomTwoSided(k, n) {
+    const C = (n, k) => { let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; };
+    const pm = x => C(n, x) * Math.pow(0.5, n);
+    const pk = pm(k); let s = 0;
+    for (let x = 0; x <= n; x++) if (pm(x) <= pk + 1e-12) s += pm(x);
+    return Math.min(1, s);
+  }
+
+  function renderGroup() {
+    const parts = participants.filter(p => !p.hidden), n = messages.length, P = parts.length;
+    const simCount = parts.filter(p => p.simulated).length, hiddenCount = participants.length - P;
+    $('groupLead').textContent = P + ' participant' + (P === 1 ? '' : 's') + (simCount ? ' (' + simCount + ' simulated)' : '') + (hiddenCount ? ', ' + hiddenCount + ' hidden' : '') + ', ' + n + ' messages, ' + (n * (n - 1) / 2) + ' pairs each. Results live only in this browser tab for now.';
+    renderConsistency();
+    if (!P) { ['gRank','h2h','bt','condorcet','toptwo','spread'].forEach(id => $(id).innerHTML = ''); return; }
+    const { M, N } = h2hMatrix(parts);
+    const W = M.map(r => r.reduce((a, b) => a + b, 0)), Tot = N.map(r => r.reduce((a, b) => a + b, 0));
+    const order = messages.map((_, i) => i).sort((a, b) => (W[b] / (Tot[b] || 1)) - (W[a] / (Tot[a] || 1)));
+
+    // ranking
+    const gr = $('gRank'); gr.innerHTML = '';
+    order.forEach((i, pos) => gr.appendChild(rankRow(pos + 1, messages[i], W[i] + ' of ' + Tot[i] + ' wins (' + pct(Tot[i] ? W[i] / Tot[i] : 0) + ')', Tot[i] ? W[i] / Tot[i] : 0)));
+
+    // head to head
+    const t = $('h2h'); t.innerHTML = '';
+    const head = document.createElement('tr'); head.appendChild(document.createElement('th'));
+    order.forEach((i, pos) => { const th = document.createElement('th'); th.textContent = '#' + (pos + 1); th.title = messages[i]; head.appendChild(th); });
+    t.appendChild(head);
+    order.forEach((i, pos) => {
+      const tr = document.createElement('tr');
+      const rh = document.createElement('th'); rh.className = 'rowhead'; rh.textContent = '#' + (pos + 1) + '  ' + messages[i]; tr.appendChild(rh);
+      order.forEach(j => {
+        const td = document.createElement('td');
+        if (i === j) { td.className = 'self'; }
+        else {
+          td.className = 'cell';
+          const r = N[i][j] ? M[i][j] / N[i][j] : 0.5;
+          td.textContent = N[i][j] ? pct(r) : '';
+          td.title = M[i][j] + ' of ' + N[i][j];
+          const a = Math.abs(r - 0.5) * 2;
+          td.style.background = r >= 0.5 ? 'color-mix(in srgb, var(--accent) ' + Math.round(a * 60) + '%, var(--surface))' : 'color-mix(in srgb, var(--warn) ' + Math.round(a * 35) + '%, var(--surface))';
+        }
+        tr.appendChild(td);
+      });
+      t.appendChild(tr);
+    });
+
+    // Bradley-Terry with bootstrap
+    const p = bradleyTerry(M, N);
+    const B = 150, boots = messages.map(() => []);
+    if (P >= 5) for (let b = 0; b < B; b++) {
+      const sample = Array.from({ length: P }, () => parts[Math.floor(Math.random() * P)]);
+      const { M: m2, N: n2 } = h2hMatrix(sample);
+      bradleyTerry(m2, n2).forEach((v, i) => boots[i].push(v / (v + 1)));
+    }
+    const btOrder = messages.map((_, i) => i).sort((a, b) => p[b] - p[a]);
+    const bt = $('bt'); bt.innerHTML = '';
+    btOrder.forEach((i, pos) => {
+      const li = document.createElement('li');
+      const v = p[i] / (p[i] + 1);
+      let lo = v, hi = v;
+      if (boots[i].length) { const s = boots[i].slice().sort((a, b) => a - b); lo = s[Math.floor(s.length * 0.05)]; hi = s[Math.floor(s.length * 0.95)]; }
+      li.innerHTML = '<span class="pos"></span><span class="text"></span><span class="stat"><span class="n"></span><div class="ci"><div class="range"></div><div class="pt"></div></div></span>';
+      li.querySelector('.pos').textContent = pos + 1; li.querySelector('.text').textContent = messages[i];
+      li.querySelector('.n').textContent = pct(v) + (P >= 5 ? ' (' + pct(lo) + ' to ' + pct(hi) + ')' : '');
+      li.querySelector('.range').style.left = pct(lo); li.querySelector('.range').style.width = pct(hi - lo);
+      li.querySelector('.pt').style.left = pct(v);
+      bt.appendChild(li);
+    });
+
+    // winner check
+    const top = order[0], second = order[1];
+    const losses = order.slice(1).filter(j => N[top][j] && M[top][j] / N[top][j] <= 0.5);
+    $('condorcet').innerHTML = '';
+    const cb = document.createElement('div'); cb.className = 'badge ' + (losses.length ? 'warn' : 'good');
+    cb.textContent = losses.length
+      ? 'No. "' + messages[top] + '" fails to win a majority against ' + losses.length + ' other message' + (losses.length > 1 ? 's' : '') + ': ' + losses.map(j => '"' + messages[j] + '" (' + pct(M[top][j] / N[top][j]) + ')').join(', ') + '. The ranking is contested.'
+      : 'Yes. "' + messages[top] + '" wins a majority against every other message. That is a clean winner.';
+    $('condorcet').appendChild(cb);
+    $('toptwo').innerHTML = '';
+    if (n >= 2) {
+      const k = M[top][second], m = N[top][second], pv = m ? binomTwoSided(k, m) : 1;
+      const tb = document.createElement('div'); tb.className = 'badge ' + (pv < 0.1 && k > m - k ? 'good' : 'warn');
+      tb.textContent = k + ' of ' + m + ' participants picked #1 over #2 head to head. ' +
+        (pv < 0.05 ? 'That is a clear gap (p = ' + pv.toFixed(3) + ').' : pv < 0.1 ? 'That is a likely gap but not conclusive (p = ' + pv.toFixed(2) + ').' : 'That is a coin flip (p = ' + pv.toFixed(2) + '). Treat #1 and #2 as tied.');
+      $('toptwo').appendChild(tb);
+      const nt = document.createElement('p'); nt.className = 'small'; nt.textContent = 'p is the chance of a split this lopsided if participants had no real preference between them. Under 0.05 is the usual bar.';
+      $('toptwo').appendChild(nt);
+    }
+
+    // polarization
+    const allRanks = parts.map(pt => ranksOf(pt.choices));
+    const sp = $('spread'); sp.innerHTML = '';
+    order.forEach((i, pos) => {
+      const rs = allRanks.map(r => r[i]);
+      const mean = rs.reduce((a, b) => a + b, 0) / rs.length;
+      const sd = Math.sqrt(rs.reduce((a, b) => a + (b - mean) ** 2, 0) / rs.length);
+      const counts = Array(n).fill(0); rs.forEach(r => counts[Math.min(n - 1, Math.round(r) - 1)]++);
+      const mx = Math.max(...counts, 1);
+      const topShare = rs.filter(r => r <= 2).length / rs.length, botShare = rs.filter(r => r >= n - 1).length / rs.length;
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="pos"></span><span class="text"></span><span class="stat"><span class="n"></span><div class="hist"></div></span>';
+      li.querySelector('.pos').textContent = pos + 1; li.querySelector('.text').textContent = messages[i];
+      let note = 'avg rank ' + mean.toFixed(1) + ', spread ' + sd.toFixed(1);
+      if (n >= 4 && topShare >= 0.3 && botShare >= 0.3) { note += ' · split'; li.querySelector('.n').className = 'n flag'; }
+      li.querySelector('.n').textContent = note;
+      const h = li.querySelector('.hist');
+      counts.forEach((c, r) => { const d = document.createElement('div'); d.style.height = Math.round(c / mx * 100) + '%'; d.title = c + ' ranked it #' + (r + 1); h.appendChild(d); });
+      sp.appendChild(li);
+    });
+
+  }
+
+  function rerenderKeepingTab() {
+    const active = document.querySelector('.tab.on').dataset.v;
+    renderGroup();
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.v === active));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === active));
+  }
+  const cycleRate = pt => { const { cycles, triples } = cyclesOf(pt.choices); return triples ? cycles / triples : 0; };
+  $('hideFlagged').addEventListener('click', () => { participants.forEach(pt => { if (cycleRate(pt) > 0.15) pt.hidden = true; }); rerenderKeepingTab(); });
+  $('includeAll').addEventListener('click', () => { participants.forEach(pt => pt.hidden = false); rerenderKeepingTab(); });
+
+  function renderConsistency() {
+    const cl = $('consist'); cl.innerHTML = '';
+    participants.forEach((pt, q) => {
+      const { cycles, triples } = cyclesOf(pt.choices);
+      const rate = triples ? cycles / triples : 0;
+      const li = document.createElement('li');
+      if (pt.hidden) li.className = 'hidden';
+      const skipped = Object.values(pt.choices).filter(v => v === null).length;
+      li.innerHTML = '<span></span><span class="small"></span><span></span><button class="btn" type="button"></button>';
+      li.children[0].textContent = 'Participant ' + (q + 1) + (pt.simulated ? ' (simulated)' : '');
+      li.children[1].textContent = cycles + ' cycle' + (cycles === 1 ? '' : 's') + ' in ' + triples + ' triples' + (skipped ? ', ' + skipped + ' skipped' : '');
+      li.children[2].textContent = rate > 0.15 ? 'Check this one' : rate > 0.07 ? 'Some noise' : 'Consistent';
+      li.children[2].className = rate > 0.15 ? 'flag' : 'ok';
+      li.children[3].textContent = pt.hidden ? 'Include' : 'Hide';
+      li.children[3].addEventListener('click', () => { pt.hidden = !pt.hidden; rerenderKeepingTab(); });
+      cl.appendChild(li);
+    });
+  }
+
+  renderList(sample);
+</script>
+</body>
+</html>
