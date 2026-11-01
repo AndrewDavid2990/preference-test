@@ -120,7 +120,8 @@ input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2p
 .option .key { font-size: 12px; font-weight: 400; color: var(--muted); }
 .option.picked, .option.picked:hover { border-color: var(--ink); border-top-color: var(--red); }
 @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } .option { min-height: 120px; padding: 20px; font-size: 18px; } .option .key { display: none; } }
-.skip { margin-top: 18px; display: flex; justify-content: center; gap: 24px; }
+.skip { margin-top: 14px; display: flex; justify-content: center; gap: 20px; }
+.skip .link, #commentSkip { padding: 12px 10px; }   /* thumb sized on phones */
 .preview-bar { display: none; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--panel); padding: 10px 14px; margin: 0 0 22px; }
 .preview-bar.on { display: block; }
 

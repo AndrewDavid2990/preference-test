@@ -87,10 +87,12 @@ Messages are stored as a list and every response refers to them by position (mes
 | `supabase/004-participant-details.sql` | Adds the segment and email settings to tests and the answers to responses. |
 | `supabase/005-timing.sql` | Adds the per pair timings to responses. |
 | `supabase/006-segments-and-comment.sql` | Several segment questions per test, the closing question, and the `add_comment` function. |
+| `supabase/007-policy-performance.sql` | A small speed tweak to the admin check. |
 | `favicon.svg` | The little icon in the browser tab. |
 | `tested.svg`, `tested-reversed.svg` | The Tested logo lockup, copied from the brand guide in the `tested` repo (red for light backgrounds, paper for dark). |
 | `test/smoke.js` | End to end check of both pages against a fake database. |
 | `.github/workflows/keepalive.yml` | Scheduled job that stops the free Supabase project from pausing. |
+| `.github/workflows/test.yml` | Runs the smoke test in GitHub on every push; screenshots are attached to each run. |
 | `README.md` | Setup and day to day use. |
 | `HOW-IT-WORKS.md` | This file. |
 | `CHANGELOG.md` | What changed and when. |

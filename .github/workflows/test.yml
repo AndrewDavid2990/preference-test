@@ -1,0 +1,27 @@
+# Runs the end to end check on every push, so a change that breaks either page is caught
+# before anyone sends a participant link. Uses a fake database, never the real one.
+name: Smoke test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.63.0 && npx playwright install --with-deps chromium
+      - name: Run the smoke test
+        run: node test/smoke.js
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: test/shots/
+          if-no-files-found: ignore

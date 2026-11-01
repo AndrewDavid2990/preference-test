@@ -2,6 +2,12 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: getting ready for beta
+
+- The smoke test now runs in GitHub on every push (`.github/workflows/test.yml`), with screenshots attached to each run, so a broken change cannot go live unnoticed.
+- Rough edges pass on phones: Back, Skip and the closing question's Skip are thumb sized; "1 pairs" reads "1 pair" on a two message test.
+- Database: a performance tweak to the admin check (`supabase/007-policy-performance.sql`), no change in behaviour.
+
 ## 2026-11-01: edit the closing question
 
 - The closing question can be changed, or cleared, on an existing test from the results page. Affects participants from then on; earlier comments keep their wording in the CSV only by context.
