@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Which message do you prefer?</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- This is the participant page. Open it as survey.html?t=TEST_ID (the admin page gives you the link). -->
+
+  <section id="message" class="screen">
+    <h1 id="msgTitle"></h1>
+    <p class="lead" id="msgBody"></p>
+  </section>
+
+  <section id="intro" class="screen">
+    <h1 id="introTitle"></h1>
+    <p class="lead">You will see pairs of short messages, one pair at a time. Pick the one you prefer in each pair. There are no right answers, go with your gut.</p>
+    <p class="note" id="introCount"></p>
+    <div class="row">
+      <button class="btn primary" id="beginBtn">Start</button>
+    </div>
+  </section>
+
+  <section id="survey" class="screen">
+    <div class="progress"><span id="progText"></span><span id="progPct"></span></div>
+    <div class="bar"><div id="progBar"></div></div>
+    <p class="question">Which message do you prefer?</p>
+    <div class="pair">
+      <button class="option" id="optA"><span class="txt"></span><span class="key">Press 1</span></button>
+      <button class="option" id="optB"><span class="txt"></span><span class="key">Press 2</span></button>
+    </div>
+    <div class="skip"><button class="link" id="skipBtn">No preference, skip this pair</button></div>
+  </section>
+
+  <section id="results" class="screen">
+    <h2>Thanks, that is everything</h2>
+    <p class="lead" id="resultsLead"></p>
+    <ol class="rank" id="rankList"></ol>
+    <p class="small">Your answers have been recorded. You can close this page.</p>
+    <p class="small"><button class="link" id="againBtn">Take it again</button></p>
+  </section>
+
+</div>
+
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script src="analysis.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0, 0); };
+  const testId = new URLSearchParams(location.search).get('t');
+
+  // Keys for the little bit of state kept in this participant's browser, so a refresh does not lose their place
+  // and finishing twice by accident is harder.
+  const progressKey = 'pt-progress-' + testId, doneKey = 'pt-done-' + testId;
+  const load = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+  const save = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  let test = null, messages = [], pairs = [], idx = 0, current = {}, locked = false;
+
+  function message(title, body) { $('msgTitle').textContent = title; $('msgBody').textContent = body; show('message'); }
+
+  async function init() {
+    if (!db.configured()) return message('Not set up yet', 'This page is not connected to a database. See README.md in the project folder.');
+    if (!testId) return message('No test selected', 'This link is missing the test id. Ask whoever sent it for a fresh link.');
+    try { test = await db.getTest(testId); } catch (e) { return message('Something went wrong', e.message); }
+    if (!test) return message('Test not found', 'This link does not match any test. It may have been deleted.');
+    if (test.closed) return message('This test is closed', 'Thanks for your interest. It is no longer taking responses.');
+    messages = test.messages;
+
+    const done = load(doneKey);
+    if (done) { current = done.choices; pairs = analysis.allPairs(messages.length); return showResults(false); }
+
+    const progress = load(progressKey);
+    if (progress && progress.pairs.length === analysis.allPairs(messages.length).length) {
+      pairs = progress.pairs; idx = progress.idx; current = progress.current;
+      show('survey'); renderPair();
+    } else {
+      $('introTitle').textContent = test.name;
+      $('introCount').textContent = analysis.allPairs(messages.length).length + ' pairs, about ' + Math.max(1, Math.round(messages.length * messages.length / 28)) + ' to 2 minutes.';
+      show('intro');
+    }
+  }
+
+  function startSurvey() {
+    pairs = analysis.randomPairOrder(messages.length);
+    idx = 0; current = {};
+    save(progressKey, { pairs, idx, current });
+    show('survey'); renderPair();
+  }
+  function renderPair() {
+    locked = false;
+    const [a, b] = pairs[idx];
+    $('optA').querySelector('.txt').textContent = messages[a];
+    $('optB').querySelector('.txt').textContent = messages[b];
+    $('optA').classList.remove('picked'); $('optB').classList.remove('picked');
+    $('progText').textContent = 'Pair ' + (idx + 1) + ' of ' + pairs.length;
+    $('progPct').textContent = Math.round(idx / pairs.length * 100) + '%';
+    $('progBar').style.width = (idx / pairs.length * 100) + '%';
+  }
+  function choose(side) {
+    if (locked) return; locked = true;
+    const [a, b] = pairs[idx];
+    current[analysis.key(a, b)] = side === null ? null : (side === 0 ? a : b);
+    if (side !== null) $(side === 0 ? 'optA' : 'optB').classList.add('picked');
+    const delay = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180;
+    setTimeout(() => {
+      idx++;
+      save(progressKey, { pairs, idx, current });
+      if (idx < pairs.length) renderPair(); else finish();
+    }, delay);
+  }
+  $('optA').addEventListener('click', () => choose(0));
+  $('optB').addEventListener('click', () => choose(1));
+  $('skipBtn').addEventListener('click', () => choose(null));
+  document.addEventListener('keydown', e => {
+    if (!$('survey').classList.contains('active')) return;
+    if (e.key === '1') choose(0); if (e.key === '2') choose(1);
+  });
+
+  async function finish() {
+    try {
+      await db.addResponses([{ test_id: testId, choices: current, simulated: false }]);
+    } catch (e) {
+      locked = false;
+      return message('Could not save your answers', e.message + ' Please check your connection and reload this page; your answers are kept until then.');
+    }
+    save(doneKey, { choices: current }); save(progressKey, null);
+    showResults(true);
+  }
+
+  function showResults(fresh) {
+    const n = messages.length, { w, p } = analysis.winsOf(n, current);
+    const rows = messages.map((m, i) => ({ m, w: w[i], p: p[i], rate: p[i] ? w[i] / p[i] : 0 })).sort((x, y) => y.rate - x.rate);
+    const list = $('rankList'); list.innerHTML = '';
+    rows.forEach((r, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="pos"></span><span class="text"></span><span class="stat"><span class="n"></span><div class="meter"><div></div></div></span>';
+      li.querySelector('.pos').textContent = i + 1; li.querySelector('.text').textContent = r.m;
+      li.querySelector('.n').textContent = r.p ? r.w + ' of ' + r.p + ' wins' : 'not rated';
+      li.querySelector('.meter div').style.width = Math.round(r.rate * 100) + '%';
+      list.appendChild(li);
+    });
+    const skipped = pairs.length - w.reduce((s, x) => s + x, 0);
+    $('resultsLead').textContent = (fresh ? 'Here is your personal ranking, by how often each message won its matchups' : 'You already completed this test. Here is your ranking') + (skipped ? ' (' + skipped + ' skipped).' : '.');
+    show('results');
+  }
+
+  $('beginBtn').addEventListener('click', startSurvey);
+  $('againBtn').addEventListener('click', () => { if (confirm('Start again? This adds a second set of answers.')) { save(doneKey, null); startSurvey(); } });
+
+  init();
+</script>
+</body>
+</html>
