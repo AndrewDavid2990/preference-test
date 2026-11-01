@@ -14,22 +14,25 @@ Plain HTML, CSS and vanilla JS, one Google Font, no build step, no framework. Ho
 
 Files:
 - `index.html`: admin page. `?new` creates a test, `?test=ID` shows results for one test, `?password` changes the password, no query shows the list of tests. Every route except the setup notice requires sign in.
-- `survey.html?t=ID`: participant page. Intro, survey, thank you screen with the participant's personal ranking.
+- `survey.html?t=ID`: participant page. Intro (name, scenario, time estimate), survey (test's question above every pair), thank you screen with the participant's personal ranking. `&preview` runs it with no database write and no localStorage, shows a banner, ignores `closed`, and offers "run again". Static og:title/description for link previews.
 - `style.css`: shared styles, light and dark via CSS variables on :root.
 - `analysis.js`: all the maths, pure functions with no DOM or network. Takes `n` (message count) and `choices` objects.
 - `db.js`: every database call. Sends the admin login token when `auth` is loaded and signed in, otherwise the anon key. Requests use `Prefer: return=representation` except `addResponses`, which uses `return=minimal` because returning rows requires select permission and anon has none on responses (PostgREST reports that as an RLS violation on insert). Swap the backend by changing only this file.
 - `auth.js`: admin login via Supabase Auth REST (`/auth/v1/token`, grant types password and refresh_token; `PUT /auth/v1/user` to change password). Session kept in localStorage under `pt-session`; `auth.token()` refreshes when within 60s of expiry, with one shared in-flight refresh so parallel requests do not reuse a refresh token. Loaded by index.html only.
 - `config.js`: Supabase URL and anon key. Placeholders until the owner fills them in; pages show a setup notice when unconfigured.
+- `supabase/003-scenario-question.sql`: adds `scenario` (default '') and `question` (default 'Which message do you prefer?') to tests. Applied live.
+- `favicon.svg`, `.github/workflows/keepalive.yml` (reads one row every 3 days with the public anon key so the free project does not pause; also runnable by hand from the Actions tab).
+- `test/smoke.js`: Playwright end to end test with a fake PostgREST and auth that mirror the real policies (anon: select tests, insert responses with return=minimal only; admin: everything). Run `node test/smoke.js` from the repo root before every push. Screenshots in `test/shots/` (gitignored).
 - `supabase/schema.sql`: tables and the initial fully open policies. `supabase/002-login.sql`: adds `admins (email)` and `is_admin()`, and alters the write and read-responses policies to `authenticated` with `is_admin()`. Net effect: anon can select tests and insert responses; everything else needs a signed in user listed in `admins`. Sign ups are left on (harmless, unlisted users get nothing). Both files have been applied to the live project `eajbqxaamwpqaumncklw`.
 - `HOW-IT-WORKS.md`, `CHANGELOG.md`: owner facing docs, keep them current.
 
 Data model:
-- `tests { id, name, messages: [string], closed, created_at }`. Messages are immutable after creation because responses refer to them by index.
+- `tests { id, name, scenario, question, messages: [string], closed, created_at }`. Messages are immutable after creation because responses refer to them by index.
 - `responses { id, test_id, choices: { "i-j": winnerIndex | null }, simulated, created_at }`. One row per participant. Key `"i-j"` always has i < j. `null` means skipped.
 
 Browser-only state (localStorage): participant progress and "already completed" flag per test on the survey page; the set of hidden participant ids per test and the login session on the admin page.
 
-Admin features: sign in and out, tests list with response counts, create test, participant link with copy, refresh, close/reopen, export CSV (one row per pair per participant), add 15 simulated participants (flagged `simulated`), remove simulated, delete test (cascades to responses).
+Admin features: sign in and out, change password, tests list with response counts, create test (name, scenario, question, messages), participant link with copy, preview link, refresh, close/reopen, export CSV (one row per pair per participant), add 15 simulated participants (flagged `simulated`), remove simulated, hide or delete a single participant, delete test (cascades to responses).
 
 ## Product decisions already made
 
@@ -50,6 +53,7 @@ Admin features: sign in and out, tests list with response counts, create test, p
 
 ## Likely next steps
 
+- Tested branding on the participant page (brand guide in the `tested` repo: Gotham/Poppins, red accent). Deliberately deferred until after the first beta so the owner can react to the look separately.
 - A client-ready summary export (the CSV is raw choices).
 - Optional: time per choice as another junk-response signal.
 - Optional: participant metadata (segment, email) collected before the survey.
@@ -59,4 +63,5 @@ Admin features: sign in and out, tests list with response counts, create test, p
 - Keep it simple and readable. The owner will read the code with AI help, not on his own.
 - Light and dark mode both supported via CSS variables on :root. Keep that working.
 - Mobile first layout. Pair cards stack on narrow screens.
-- Testing: there is no automated test in the repo. To check a change, serve the folder locally and fake the Supabase REST endpoints (Playwright route interception works well), or point `config.js` at a throwaway Supabase project.
+- Testing: `node test/smoke.js` before every push (fake database, no network). For changes to policies or auth, also verify against the live project with curl using the anon key and a real admin token, since the fake cannot catch PostgREST subtleties like return=representation needing select permission. Clean up any test rows afterwards.
+- Before committing, grep every text file for the em dash character (U+2014) and make sure there are none, including in UI copy and comments.

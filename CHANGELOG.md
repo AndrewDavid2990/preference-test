@@ -2,6 +2,15 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: beta readiness
+
+- Each test now has an optional **scenario** (framing shown before the first pair) and an editable **question** (shown above every pair). Stored as two new columns (`supabase/003-scenario-question.sql`).
+- **Preview** button on the results page opens the survey in a mode that saves nothing, for checking a test or showing a client. Previews work even when a test is closed. The "take it again" option is now preview only.
+- **Delete** a single participant from the Consistency tab (Hide remains for a non destructive version).
+- Scheduled GitHub job pings the database every three days so the free Supabase project does not pause.
+- Participant page: link previews (title and description when shared in Slack, LinkedIn or email), favicon, a sensible time estimate (was "about 2 to 2 minutes"), bigger tap targets and no "Press 1" hints on phones.
+- `test/smoke.js`: end to end check of both pages against a fake database, including a phone sized run.
+
 ## 2026-11-01: admin login
 
 - Admin page now requires signing in with email and password (Supabase Auth). A "Signed in as" line with Change password and Sign out appears at the top.

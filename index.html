@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Preference tests</title>
 <meta name="robots" content="noindex">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -78,6 +79,10 @@
     <p class="lead">Enter 2 to 8 messages. Participants will see every pair (28 at most, about 2 minutes), pick one each time, and the results become a ranking. Messages cannot be edited once the test has responses, so check them now.</p>
     <label class="field" for="testName">Test name (participants see this)</label>
     <input class="text" id="testName" type="text" maxlength="120" placeholder="Homepage headline, round 1">
+    <label class="field" for="testScenario">Scenario (optional, shown before the first pair)</label>
+    <textarea class="text" id="testScenario" rows="3" maxlength="600" placeholder="Imagine you run marketing at a B2B software company and you are looking for help improving conversions on your website and landing pages."></textarea>
+    <label class="field" for="testQuestion">Question (shown above every pair)</label>
+    <input class="text" id="testQuestion" type="text" maxlength="160" value="Which message do you prefer?">
     <label class="field">Messages</label>
     <div class="msg-list" id="msgList"></div>
     <div class="row" style="margin-bottom:28px">
@@ -99,12 +104,18 @@
     </div>
     <p class="lead" id="groupLead"></p>
 
+    <div class="brief" id="brief">
+      <p id="briefScenario"></p>
+      <p id="briefQuestion"></p>
+    </div>
+
     <label class="field">Participant link</label>
     <div class="share">
       <input id="shareUrl" type="text" readonly>
       <button class="btn" id="copyBtn">Copy</button>
-      <a class="btn" id="openLink" target="_blank" rel="noopener">Open</a>
+      <a class="btn" id="previewLink" target="_blank" rel="noopener">Preview</a>
     </div>
+    <p class="small" style="margin:-10px 0 20px">Preview runs the survey without saving anything, so you can check it or show a client. Only send the participant link itself to real participants.</p>
 
     <div class="row">
       <button class="btn" id="refreshBtn">Refresh results</button>
@@ -154,7 +165,7 @@
     </div>
 
     <div class="view" id="v-consist">
-      <p class="note">If a participant prefers A over B and B over C, they should prefer A over C. Each violation is a cycle. Lots of cycles means random clicking or messages too similar to judge. Hide a participant to drop them from every other view. Hidden choices are remembered in this browser.</p>
+      <p class="note">If a participant prefers A over B and B over C, they should prefer A over C. Each violation is a cycle. Lots of cycles means random clicking or messages too similar to judge. Hide a participant to drop them from every other view (remembered in this browser only). Delete removes their response for good.</p>
       <div class="row" style="margin-bottom:14px">
         <button class="btn" id="hideFlagged">Hide all flagged</button>
         <button class="btn" id="includeAll">Include everyone</button>
@@ -277,7 +288,8 @@
   $('createBtn').addEventListener('click', async () => {
     const name = $('testName').value.trim() || 'Untitled test';
     $('createBtn').disabled = true;
-    try { const t = await db.createTest(name, readMessages()); location.href = '?test=' + t.id; }
+    const scenario = $('testScenario').value.trim(), question = $('testQuestion').value.trim() || 'Which message do you prefer?';
+    try { const t = await db.createTest(name, readMessages(), scenario, question); location.href = '?test=' + t.id; }
     catch (e) { showError(e); $('createBtn').disabled = false; }
   });
 
@@ -293,7 +305,10 @@
     $('testTitle').textContent = test.name;
     document.title = test.name + ' results';
     const url = new URL('survey.html?t=' + test.id, location.href).href;
-    $('shareUrl').value = url; $('openLink').href = url;
+    $('shareUrl').value = url; $('previewLink').href = url + '&preview';
+    $('briefScenario').textContent = test.scenario ? 'Scenario: ' + test.scenario : '';
+    $('briefScenario').style.display = test.scenario ? '' : 'none';
+    $('briefQuestion').textContent = 'Question: ' + (test.question || 'Which message do you prefer?');
     await reloadResponses();
     show('group');
   }
@@ -483,14 +498,19 @@
       const li = document.createElement('li');
       if (pt.hidden) li.className = 'hidden';
       const skipped = Object.values(pt.choices).filter(v => v === null).length;
-      li.innerHTML = '<span></span><span class="small"></span><span></span><button class="btn" type="button"></button>';
+      li.innerHTML = '<span></span><span class="small"></span><span></span><span class="acts"><button class="btn" type="button"></button><button class="btn danger" type="button">Delete</button></span>';
       li.children[0].textContent = 'Participant ' + (q + 1) + (pt.simulated ? ' (simulated)' : '');
       li.children[0].title = fmtDate(pt.created_at);
       li.children[1].textContent = cycles + ' cycle' + (cycles === 1 ? '' : 's') + ' in ' + triples + ' triples' + (skipped ? ', ' + skipped + ' skipped' : '');
       li.children[2].textContent = rate > 0.15 ? 'Check this one' : rate > 0.07 ? 'Some noise' : 'Consistent';
       li.children[2].className = rate > 0.15 ? 'flag' : 'ok';
-      li.children[3].textContent = pt.hidden ? 'Include' : 'Hide';
-      li.children[3].addEventListener('click', () => { pt.hidden = !pt.hidden; saveHidden(); rerenderKeepingTab(); });
+      const [hideBtn, delBtn] = li.children[3].children;
+      hideBtn.textContent = pt.hidden ? 'Include' : 'Hide';
+      hideBtn.addEventListener('click', () => { pt.hidden = !pt.hidden; saveHidden(); rerenderKeepingTab(); });
+      delBtn.addEventListener('click', async () => {
+        if (!confirm('Delete participant ' + (q + 1) + ' for good? This cannot be undone.')) return;
+        try { await db.deleteResponse(pt.id); await reloadResponses(); } catch (e) { showError(e); }
+      });
       cl.appendChild(li);
     });
   }

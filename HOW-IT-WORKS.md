@@ -28,15 +28,15 @@ Participant's phone or laptop          Your laptop
 ## What happens when you create a test
 
 1. You sign in. The browser sends your email and password to Supabase's login service and gets back a **token**, a long string that proves who you are for about an hour (it is renewed automatically while the tab is open). The token is kept in your browser's local storage so you stay signed in between visits. Change password sends a new password to the same service using that token.
-2. You fill in a name and up to 8 messages and click Create test. The browser sends one row to the `tests` table: `{ name, messages: ["...", "..."], closed: false }`. Supabase gives it an id, a random string like `312c6449-f645-40e8-9021-0009b993ee72`.
-3. The results page opens with a participant link that is just `survey.html?t=` plus that id.
+2. You fill in a name, an optional scenario, the question, and up to 8 messages and click Create test. The browser sends one row to the `tests` table: `{ name, scenario, question, messages: ["...", "..."], closed: false }`. Supabase gives it an id, a random string like `312c6449-f645-40e8-9021-0009b993ee72`.
+3. The results page opens with a participant link that is just `survey.html?t=` plus that id. The Preview button opens the same link with `&preview` added, which tells the survey page to save nothing: no response row, no browser memory.
 
 Messages are stored as a list and every response refers to them by position (message 0, message 1, and so on). That is why messages cannot be edited after creation: changing the list would silently change what old responses mean.
 
 ## What happens when a participant takes the test
 
 1. Their browser loads `survey.html`, reads the id from the link, and fetches that one row from `tests`. No login is needed; the database rules allow anyone to read tests.
-2. If the test is closed they see a closed message. Otherwise they see an intro with the test name and a Start button.
+2. If the test is closed they see a closed message. Otherwise they see an intro with the test name, the scenario if there is one, a time estimate (about four seconds per pair), and a Start button. The question you set is shown above every pair.
 3. On Start, the browser builds every pair of messages (28 pairs for 8 messages), shuffles the order, and randomly decides which message goes left and which goes right for each pair. This is done fresh for every participant so position bias averages out.
 4. Each click records the winner for that pair in an object like `{ "0-3": 3, "1-2": 1, "0-1": null }`. The key is the two message positions (smaller first), the value is the winning position, and `null` means they skipped. After every click this object is saved to the participant's local storage, so a refresh or a dropped connection picks up where they left off.
 5. On the last pair, the whole object is sent as one row to the `responses` table together with the test id. The database rules allow anyone to add a response, but not to read or delete them. (One subtlety: Supabase normally echoes a saved row back, and echoing counts as reading, so this one save asks for no echo.)
@@ -46,7 +46,7 @@ Messages are stored as a list and every response refers to them by position (mes
 
 1. The admin page fetches the test row and every response row for it, using your login token. Without a valid token the database returns nothing for responses.
 2. Everything on the six tabs is calculated in your browser from those rows, in `analysis.js`. Nothing is stored. Refresh results simply fetches again and recalculates.
-3. Hiding a participant on the Consistency tab is remembered in your browser only (local storage keyed by test id). The response stays in the database; it is just left out of the maths on your machine. Another admin on another laptop would not see your hidden choices.
+3. Hiding a participant on the Consistency tab is remembered in your browser only (local storage keyed by test id). The response stays in the database; it is just left out of the maths on your machine. Another admin on another laptop would not see your hidden choices. Deleting a participant removes the row from the database for everyone.
 
 ## The maths, briefly
 
@@ -78,6 +78,10 @@ Messages are stored as a list and every response refers to them by position (mes
 | `config.js` | Supabase project URL and public anon key. |
 | `supabase/schema.sql` | Creates the two tables and the first, fully open rules. |
 | `supabase/002-login.sql` | Adds the `admins` table and makes the admin rules require a listed, signed in email. |
+| `supabase/003-scenario-question.sql` | Adds the scenario and question columns to tests. |
+| `favicon.svg` | The little icon in the browser tab. |
+| `test/smoke.js` | End to end check of both pages against a fake database. |
+| `.github/workflows/keepalive.yml` | Scheduled job that stops the free Supabase project from pausing. |
 | `README.md` | Setup and day to day use. |
 | `HOW-IT-WORKS.md` | This file. |
 | `CHANGELOG.md` | What changed and when. |
@@ -85,4 +89,8 @@ Messages are stored as a list and every response refers to them by position (mes
 
 ## Limits of the free tier
 
-Supabase free projects pause after a week with no activity and need a click in the dashboard to wake up. If the admin page shows a connection error after a quiet spell, that is usually why. GitHub Pages has no such limit.
+Supabase free projects pause after a week with no activity and need a click in the dashboard to wake up. To prevent that, a scheduled job in GitHub (`.github/workflows/keepalive.yml`) reads one row from the database every three days, which counts as activity. If the admin page ever shows a connection error after a quiet spell, a paused project is still the first thing to check. GitHub Pages has no such limit.
+
+## Checking a change
+
+`test/smoke.js` is a script that starts both pages locally, stands in for Supabase with a fake that follows the same access rules, and clicks through everything: sign in, create a test with a scenario and question, simulated participants, every results tab, hide and delete, preview, a participant on a phone sized screen with a mid survey refresh, CSV export, close, delete, password change, sign out. It saves screenshots to `test/shots/`. Running it needs Node and Playwright on the machine; Claude runs it before every push.

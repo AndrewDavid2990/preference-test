@@ -52,8 +52,8 @@ input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-of
 @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
 .question { font-size: 20px; font-weight: 500; margin: 0 0 18px; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
-.option { display: flex; flex-direction: column; justify-content: space-between; gap: 20px; min-height: 200px; padding: 24px; text-align: left; font: inherit; font-size: 19px; line-height: 1.4; background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
+@media (max-width: 640px) { .pair { grid-template-columns: 1fr; } .option { min-height: 120px; padding: 20px; } .option .key { display: none; } }
+.option { display: flex; flex-direction: column; justify-content: space-between; gap: 20px; min-height: 200px; padding: 24px; -webkit-tap-highlight-color: transparent; text-align: left; font: inherit; font-size: 19px; line-height: 1.4; background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
 .option:hover { border-color: var(--accent); }
 .option .key { font-size: 13px; color: var(--muted); }
 .option.picked { border-color: var(--accent); background: var(--win); }
@@ -117,6 +117,17 @@ td.self { background: var(--line); }
 .who { display: none; justify-content: flex-end; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); margin: -16px 0 12px; }
 .who.on { display: flex; }
 .who .link { font-size: 13px; padding: 2px 4px; color: var(--muted); }
+
+/* scenario and question */
+textarea.text { resize: vertical; line-height: 1.4; font-family: inherit; }
+.scenario { font-size: 18px; line-height: 1.5; padding: 16px 18px; background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; margin: 0 0 20px; }
+.brief { font-size: 15px; color: var(--muted); margin: -8px 0 20px; }
+.brief p { margin: 0 0 4px; }
+.preview-bar { display: none; background: var(--warn-bg); color: var(--warn); font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 8px; margin: 0 0 20px; }
+.preview-bar.on { display: block; }
+.plist .acts { display: flex; gap: 6px; }
+.plist li { grid-template-columns: 1fr 180px 110px auto; }
+@media (max-width: 560px) { .plist li { grid-template-columns: 1fr 1fr; } }
 
 /* error and status messages */
 .alert { display: none; padding: 12px 14px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 15px; margin: 0 0 18px; }

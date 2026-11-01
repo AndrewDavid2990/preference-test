@@ -3,7 +3,7 @@
 // nothing to install. To swap the backend later, only this file needs to change.
 //
 // Tables (see supabase/schema.sql):
-//   tests      { id, name, messages: [string], closed, created_at }
+//   tests      { id, name, scenario, question, messages: [string], closed, created_at }
 //   responses  { id, test_id, choices: { "i-j": winnerIndex | null }, simulated, created_at }
 //
 // Permissions are enforced by the database, not here. Without a login (the participant page)
@@ -42,7 +42,7 @@ const db = {
   /* tests */
   listTests() { return this.request("GET", "tests?select=*&order=created_at.desc"); },
   async getTest(id) { const rows = await this.request("GET", "tests?select=*&id=eq." + encodeURIComponent(id)); return rows[0] || null; },
-  async createTest(name, messages) { const rows = await this.request("POST", "tests", { name, messages }); return rows[0]; },
+  async createTest(name, messages, scenario, question) { const rows = await this.request("POST", "tests", { name, messages, scenario, question }); return rows[0]; },
   updateTest(id, fields) { return this.request("PATCH", "tests?id=eq." + encodeURIComponent(id), fields); },
   deleteTest(id) { return this.request("DELETE", "tests?id=eq." + encodeURIComponent(id)); },
 
@@ -50,5 +50,6 @@ const db = {
   listResponses(testId) { return this.request("GET", "responses?select=*&order=created_at.asc&test_id=eq." + encodeURIComponent(testId)); },
   countResponses() { return this.request("GET", "responses?select=test_id"); },   // one tiny row per response, tallied by the caller
   addResponses(rows) { return this.request("POST", "responses", rows, false); },  // rows: [{ test_id, choices, simulated }]
+  deleteResponse(id) { return this.request("DELETE", "responses?id=eq." + encodeURIComponent(id)); },
   deleteSimulated(testId) { return this.request("DELETE", "responses?simulated=eq.true&test_id=eq." + encodeURIComponent(testId)); }
 };

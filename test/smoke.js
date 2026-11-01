@@ -1,0 +1,189 @@
+// End to end check of both pages against a faked Supabase, so nothing touches the real database.
+// Run from the repo root:  node test/smoke.js
+// Needs Node and Playwright (npm i playwright, then npx playwright install chromium).
+// Screenshots land in test/shots/ (desktop and phone) for a quick look.
+
+const { chromium } = require('playwright');
+const http = require('http'), fs = require('fs'), path = require('path');
+const ROOT = path.join(__dirname, '..'), SHOTS = path.join(__dirname, 'shots');
+fs.mkdirSync(SHOTS, { recursive: true });
+
+/* ---------- tiny static server for the pages ---------- */
+const server = http.createServer((req, res) => {
+  const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/\/$/, '/index.html'));
+  if (!fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end(); }
+  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+  res.writeHead(200, { 'Content-Type': types[path.extname(p)] || 'text/plain' });
+  res.end(fs.readFileSync(p));
+}).listen(8765);
+
+/* ---------- fake Supabase: REST with the same access rules as the real one, plus auth ---------- */
+const tables = { tests: [], responses: [] };
+let seq = 0; const uuid = () => '00000000-0000-4000-8000-' + String(++seq).padStart(12, '0');
+const ADMIN = { email: 'admin@example.com', password: 'secret-pass' };
+let tokenSerial = 0, refreshes = 0, pwChanges = [];
+const session = () => ({ access_token: 'tok' + (++tokenSerial), refresh_token: 'ref' + tokenSerial, expires_at: Math.floor(Date.now() / 1000) + 3600, user: { email: ADMIN.email } });
+function filterRows(rows, params) {
+  let out = rows.filter(r => [...params].every(([k, v]) => {
+    if (['select', 'order', 'limit'].includes(k)) return true;
+    const [op, val] = v.split('.'); if (op !== 'eq') throw new Error('fake db: unsupported filter ' + v);
+    return String(r[k]) === val;
+  }));
+  const order = params.get('order'); if (order) { const [col, dir] = order.split('.'); out.sort((a, b) => (a[col] < b[col] ? -1 : 1) * (dir === 'desc' ? -1 : 1)); }
+  return out;
+}
+async function fakeRest(route, req) {
+  const u = new URL(req.url()); const table = u.pathname.split('/').pop(); const params = u.searchParams; const method = req.method();
+  const isAdmin = /Bearer tok/.test(req.headers()['authorization']); const wantRows = /representation/.test(req.headers()['prefer'] || '');
+  const deny = () => route.fulfill({ status: 401, contentType: 'application/json', body: '{"message":"new row violates row-level security policy"}' });
+  const body = req.postData() ? JSON.parse(req.postData()) : null;
+  // the real rules: anon may read tests and add responses, admin may do anything
+  if (!isAdmin && !((method === 'GET' && table === 'tests') || (method === 'POST' && table === 'responses'))) {
+    if (method === 'GET') return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });   // selects just come back empty
+    if (method === 'POST') return deny();
+    return route.fulfill({ status: 204, body: '' });   // updates and deletes silently do nothing
+  }
+  if (!isAdmin && method === 'POST' && wantRows) return deny();   // returning rows needs read permission
+  let result;
+  if (method === 'GET') { const sel = params.get('select'); result = filterRows(tables[table], params).map(r => { if (sel && sel !== '*') { const o = {}; sel.split(',').forEach(k => o[k] = r[k]); return o; } return r; }); }
+  else if (method === 'POST') { const rows = [].concat(body).map(b => ({ id: uuid(), closed: false, simulated: false, scenario: '', question: 'Which message do you prefer?', created_at: new Date(Date.now() + seq * 1000).toISOString(), ...b })); tables[table].push(...rows); result = rows; }
+  else if (method === 'PATCH') { result = filterRows(tables[table], params); result.forEach(r => Object.assign(r, body)); }
+  else if (method === 'DELETE') { const del = filterRows(tables[table], params); tables[table] = tables[table].filter(r => !del.includes(r)); if (table === 'tests') tables.responses = tables.responses.filter(r => !del.some(t => t.id === r.test_id)); result = del; }
+  if (!wantRows && method !== 'GET') return route.fulfill({ status: method === 'POST' ? 201 : 204, body: '' });
+  await route.fulfill({ status: method === 'POST' ? 201 : 200, contentType: 'application/json', body: JSON.stringify(result) });
+}
+async function fakeAuth(route, req) {
+  const u = new URL(req.url()); const body = req.postData() ? JSON.parse(req.postData()) : {};
+  const json = (status, data) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
+  if (u.pathname.endsWith('/logout')) return route.fulfill({ status: 204, body: '' });
+  if (u.pathname.endsWith('/user') && req.method() === 'PUT') { pwChanges.push(body.password); return json(200, {}); }
+  const grant = u.searchParams.get('grant_type');
+  if (grant === 'password') return body.email === ADMIN.email && body.password === ADMIN.password ? json(200, session()) : json(400, { error: 'invalid_grant', error_description: 'Invalid login credentials' });
+  if (grant === 'refresh_token') { refreshes++; return json(200, session()); }
+  json(404, {});
+}
+
+(async () => {
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+  const errors = [];
+  ctx.on('page', pg => { pg.on('pageerror', e => errors.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); }); });
+  await ctx.route('**/config.js', r => r.fulfill({ contentType: 'text/javascript', body: 'const CONFIG={SUPABASE_URL:"https://fake-project.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_fake"};' }));
+  await ctx.route('https://fake-project.supabase.co/rest/v1/**', fakeRest);
+  await ctx.route('https://fake-project.supabase.co/auth/v1/**', fakeAuth);
+  await ctx.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '' }));
+  const base = 'http://localhost:8765/';
+  const page = await ctx.newPage();
+  const check = (cond, msg) => { if (!cond) throw new Error('FAILED: ' + msg); console.log('ok: ' + msg); };
+  const lead = () => page.locator('#groupLead').textContent();
+
+  /* sign in */
+  await page.goto(base); await page.waitForSelector('#login.active'); check(true, 'sign in screen first');
+  await page.fill('#loginEmail', ADMIN.email); await page.fill('#loginPassword', 'wrong'); await page.click('#loginBtn');
+  await page.waitForSelector('#alert.on'); check((await page.locator('#alert').textContent()) === 'Wrong email or password.', 'wrong password message');
+  await page.fill('#loginPassword', ADMIN.password); await page.click('#loginBtn'); await page.waitForSelector('#list.active');
+  check((await page.locator('#whoEmail').textContent()) === ADMIN.email, 'signed in');
+  check(await page.locator('#testList .empty').count() === 1, 'empty tests list');
+
+  /* create a test with scenario and question */
+  await page.click('a:has-text("New test")'); await page.waitForSelector('#setup.active');
+  check(await page.locator('#createBtn').isDisabled(), 'create disabled with no messages');
+  await page.click('#sampleBtn');
+  await page.fill('#testScenario', 'Imagine you are looking for help improving conversions on your website.');
+  await page.fill('#testQuestion', 'Which headline would make you more likely to book a call?');
+  check((await page.locator('#pairHint').textContent()).startsWith('28'), 'sample fills 8 messages, 28 comparisons');
+  await page.click('#createBtn'); await page.waitForSelector('#group.active');
+  const test = tables.tests[0];
+  check(test.scenario.startsWith('Imagine') && test.question.startsWith('Which headline'), 'scenario and question saved');
+  check((await page.locator('#briefQuestion').textContent()).includes('book a call'), 'results page shows the question');
+  check((await page.locator('#gRank .empty').count()) === 1, 'empty results state');
+  const shareUrl = await page.inputValue('#shareUrl'); check(shareUrl === base + 'survey.html?t=' + test.id, 'share url');
+  check((await page.locator('#previewLink').getAttribute('href')) === shareUrl + '&preview', 'preview link');
+
+  /* simulate and look at every tab */
+  await page.click('#simBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('15 participants'));
+  for (const v of ['v-rank', 'v-h2h', 'v-bt', 'v-winner', 'v-spread', 'v-consist']) {
+    await page.click('.tab[data-v="' + v + '"]');
+    check(await page.locator('#' + v).isVisible() && (await page.locator('#' + v).innerText()).length > 50, 'tab ' + v + ' renders');
+    await page.screenshot({ path: path.join(SHOTS, 'admin-' + v + '.png'), fullPage: true });
+  }
+  check(await page.locator('#consist li').count() === 15, 'consistency lists 15');
+  await page.click('#consist li:first-child .acts button:first-child'); check((await lead()).includes('1 hidden'), 'hide one participant');
+  await page.reload(); await page.waitForSelector('#group.active'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.includes('1 hidden'));
+  check(true, 'hidden state and login survive reload');
+  await page.click('.tab[data-v="v-consist"]'); await page.click('#includeAll');
+  page.once('dialog', d => d.accept()); await page.click('#consist li:first-child .acts button:last-child');
+  await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('14 participants'));
+  check(tables.responses.length === 14, 'delete one participant');
+
+  /* preview: nothing saved */
+  const pv = await ctx.newPage(); await pv.goto(shareUrl + '&preview'); await pv.waitForSelector('#intro.active');
+  check(await pv.locator('#previewBar').isVisible(), 'preview banner');
+  check((await pv.locator('#introScenario').textContent()).startsWith('Imagine'), 'scenario shown on intro');
+  await pv.click('#beginBtn'); await pv.waitForSelector('#survey.active');
+  check((await pv.locator('#question').textContent()).startsWith('Which headline'), 'custom question above pairs');
+  for (let i = 0; i < 28; i++) { await pv.click('#optA'); await pv.waitForTimeout(220); }
+  await pv.waitForSelector('#results.active');
+  check(tables.responses.length === 14, 'preview saved nothing');
+  check(await pv.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pt-progress') || k.startsWith('pt-done')).length) === 0, 'preview left no browser state');
+  check(await pv.locator('#againBtn').isVisible(), 'preview offers run again');
+  await pv.close();
+
+  /* real participant, on a phone */
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  phone.on('page', pg => pg.on('pageerror', e => errors.push('phone pageerror: ' + e.message)));
+  await phone.route('**/config.js', r => r.fulfill({ contentType: 'text/javascript', body: 'const CONFIG={SUPABASE_URL:"https://fake-project.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_fake"};' }));
+  await phone.route('https://fake-project.supabase.co/rest/v1/**', fakeRest);
+  await phone.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '' }));
+  const sp = await phone.newPage();
+  await sp.goto(shareUrl); await sp.waitForSelector('#intro.active');
+  check((await sp.locator('#introCount').textContent()) === '28 pairs, about 2 minutes.', 'time estimate: ' + await sp.locator('#introCount').textContent());
+  await sp.screenshot({ path: path.join(SHOTS, 'phone-intro.png'), fullPage: true });
+  await sp.click('#beginBtn'); await sp.waitForSelector('#survey.active');
+  check(await sp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll on phone');
+  await sp.screenshot({ path: path.join(SHOTS, 'phone-survey.png'), fullPage: true });
+  for (let i = 0; i < 5; i++) { await sp.tap(i % 2 ? '#optA' : '#optB'); await sp.waitForTimeout(220); }
+  await sp.tap('#skipBtn'); await sp.waitForTimeout(220);
+  await sp.reload(); await sp.waitForSelector('#survey.active');
+  check((await sp.locator('#progText').textContent()) === 'Pair 7 of 28', 'progress survives reload');
+  for (let i = 6; i < 28; i++) { await sp.tap(i % 2 ? '#optA' : '#optB'); await sp.waitForTimeout(220); }
+  await sp.waitForSelector('#results.active');
+  check(tables.responses.filter(r => !r.simulated).length === 1, 'response saved');
+  check(Object.keys(tables.responses.find(r => !r.simulated).choices).length === 28, '28 choices recorded');
+  check(!(await sp.locator('#againBtn').isVisible()), 'no retake for real participants');
+  await sp.screenshot({ path: path.join(SHOTS, 'phone-done.png'), fullPage: true });
+  await sp.reload(); await sp.waitForSelector('#results.active');
+  check((await sp.locator('#resultsLead').textContent()).startsWith('You already completed'), 'done flag blocks retake');
+  await phone.close();
+
+  /* admin: refresh, export, remove simulated, close, delete */
+  await page.click('#refreshBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('15 participants'));
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportBtn')]);
+  check(fs.readFileSync(await dl.path(), 'utf8').split('\n').length === 1 + 15 * 28, 'csv has one row per pair per participant');
+  await page.click('#unsimBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('1 participant,'));
+  check(await page.locator('#unsimBtn').isDisabled(), 'remove simulated');
+  await page.click('#closeBtn'); await page.waitForFunction(() => document.getElementById('statusPill').textContent === 'Closed');
+  const closedCheck = await ctx.newPage(); await closedCheck.goto(shareUrl); await closedCheck.waitForSelector('#message.active');
+  check((await closedCheck.locator('#msgTitle').textContent()) === 'This test is closed', 'closed test blocks participants');
+  await closedCheck.goto(shareUrl + '&preview'); await closedCheck.waitForSelector('#intro.active'); check(true, 'preview still works when closed');
+  await closedCheck.close();
+
+  /* password change, sign out */
+  await page.goto(base + '?password'); await page.waitForSelector('#password.active');
+  await page.fill('#newPassword', 'newsecret123'); await page.fill('#newPassword2', 'newsecret123'); await page.click('#passwordBtn');
+  await page.waitForFunction(() => document.getElementById('passwordHint').textContent === 'Saved.'); check(pwChanges[0] === 'newsecret123', 'password change sent');
+  await page.goto(base); await page.waitForSelector('#testList li a');
+  await page.click('#testList li a'); await page.waitForSelector('#group.active');
+  page.once('dialog', d => d.accept()); await page.click('#deleteBtn'); await page.waitForSelector('#list.active');
+  check(tables.tests.length === 0 && tables.responses.length === 0, 'delete test cascades');
+  await page.click('#signOutBtn'); await page.waitForSelector('#login.active'); check(true, 'signed out');
+
+  /* dark mode look */
+  await page.emulateMedia({ colorScheme: 'dark' }); await page.goto(base + '?new'); await page.waitForSelector('#login.active');
+  await page.screenshot({ path: path.join(SHOTS, 'login-dark.png'), fullPage: true });
+
+  const real = errors.filter(e => !/Wrong email or password|status of 400/.test(e));   // the deliberate wrong password logs itself
+  console.log(real.length ? 'ERRORS:\n' + real.join('\n') : 'no console or page errors');
+  await browser.close(); server.close();
+  if (real.length) process.exit(1);
+})().catch(e => { console.error(e); process.exit(1); });

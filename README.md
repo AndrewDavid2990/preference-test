@@ -7,7 +7,7 @@ Two pages:
 | Page | Who uses it | What it does |
 |---|---|---|
 | `index.html` | You (sign in required) | List of tests, create a test, copy the participant link, read results, export CSV. |
-| `survey.html?t=ID` | Participants | Opens straight into the survey for one test. Saves their answers when they finish. |
+| `survey.html?t=ID` | Participants | Opens straight into the survey for one test. Saves their answers when they finish. Add `&preview` to run it without saving. |
 
 Both are plain HTML, CSS and JavaScript. No build step. Built for [Tested](https://tested.agency); the brand guide and other agency material live in the separate `tested` repo. Data is stored in a free Supabase database so tests and responses survive refreshes and collect from every participant's device.
 
@@ -49,12 +49,13 @@ Until it is online, you can still open `index.html` directly from your computer 
 1. Open the admin page and sign in (you stay signed in on that browser until you sign out). **Change password** at the top of the page is where you set your own. Click **New test**. Name it (participants see the name), enter the messages, click **Create test**.
 2. Copy the participant link and send it out. Each participant answers every pair once; their progress is kept if they refresh, and the page remembers when they have finished.
 3. Watch results come in with **Refresh results**. The Consistency tab flags random clickers; hiding someone there drops them from every other view (hidden choices are remembered in your browser, not in the database).
-4. **Close test** stops new responses. **Export CSV** downloads every choice, one row per pair per participant.
-5. **Add 15 simulated** inserts fake participants so you can see how the views behave before real data arrives. **Remove simulated** deletes them again. They are marked as simulated everywhere.
+5. **Close test** stops new responses (previews still work). **Export CSV** downloads every choice, one row per pair per participant.
+6. **Add 15 simulated** inserts fake participants so you can see how the views behave before real data arrives. **Remove simulated** deletes them again. They are marked as simulated everywhere.
 
 ## Good to know
 
 - Messages cannot be edited after a test is created, because responses refer to messages by position. Create a new test instead.
 - The admin page needs a login, and only emails in the `admins` table get in. Anyone with a participant link can respond, and the link is unguessable but not secret, so send it to a known list.
-- Supabase free projects pause after about a week of no activity. If the admin page cannot connect after a quiet spell, open the Supabase dashboard and click Restore project.
+- Supabase free projects pause after about a week of no activity. A scheduled job in this repo (`.github/workflows/keepalive.yml`) reads one row every three days to prevent that. If the admin page ever cannot connect after a quiet spell, open the Supabase dashboard and click Restore project.
+- To check a change without touching the real database, run `node test/smoke.js` (needs Node and Playwright). It drives both pages through the whole flow against a fake database and saves screenshots, including phone size, in `test/shots/`.
 - All analysis maths lives in `analysis.js`, all database calls in `db.js`. Swapping the database later means changing only `db.js`.

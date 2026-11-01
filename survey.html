@@ -3,15 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Which message do you prefer?</title>
+<title>Quick preference survey</title>
+<meta name="description" content="Pick between pairs of short messages. Takes about two minutes.">
+<meta property="og:title" content="Quick preference survey">
+<meta property="og:description" content="Pick between pairs of short messages. Takes about two minutes.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <meta name="robots" content="noindex">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
 
-  <!-- This is the participant page. Open it as survey.html?t=TEST_ID (the admin page gives you the link). -->
+  <!-- This is the participant page. Open it as survey.html?t=TEST_ID (the admin page gives you the link).
+       Add &preview to run through it without saving anything. -->
+
+  <div class="preview-bar" id="previewBar">Preview. Nothing you click here is saved.</div>
 
   <section id="message" class="screen">
     <h1 id="msgTitle"></h1>
@@ -20,7 +29,8 @@
 
   <section id="intro" class="screen">
     <h1 id="introTitle"></h1>
-    <p class="lead">You will see pairs of short messages, one pair at a time. Pick the one you prefer in each pair. There are no right answers, go with your gut.</p>
+    <p class="scenario" id="introScenario"></p>
+    <p class="lead">You will see pairs of short messages, one pair at a time, and pick one each time. There are no right answers, go with your gut.</p>
     <p class="note" id="introCount"></p>
     <div class="row">
       <button class="btn primary" id="beginBtn">Start</button>
@@ -30,7 +40,7 @@
   <section id="survey" class="screen">
     <div class="progress"><span id="progText"></span><span id="progPct"></span></div>
     <div class="bar"><div id="progBar"></div></div>
-    <p class="question">Which message do you prefer?</p>
+    <p class="question" id="question"></p>
     <div class="pair">
       <button class="option" id="optA"><span class="txt"></span><span class="key">Press 1</span></button>
       <button class="option" id="optB"><span class="txt"></span><span class="key">Press 2</span></button>
@@ -42,8 +52,8 @@
     <h2>Thanks, that is everything</h2>
     <p class="lead" id="resultsLead"></p>
     <ol class="rank" id="rankList"></ol>
-    <p class="small">Your answers have been recorded. You can close this page.</p>
-    <p class="small"><button class="link" id="againBtn">Take it again</button></p>
+    <p class="small" id="resultsNote">Your answers have been recorded. You can close this page.</p>
+    <p class="small"><button class="link" id="againBtn">Run through it again</button></p>
   </section>
 
 </div>
@@ -54,25 +64,36 @@
 <script>
   const $ = id => document.getElementById(id);
   const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0, 0); };
-  const testId = new URLSearchParams(location.search).get('t');
+  const params = new URLSearchParams(location.search);
+  const testId = params.get('t');
+  const preview = params.has('preview');   // preview mode: nothing is saved, in the database or in this browser
 
   // Keys for the little bit of state kept in this participant's browser, so a refresh does not lose their place
-  // and finishing twice by accident is harder.
+  // and finishing twice by accident is harder. Preview mode skips all of this.
   const progressKey = 'pt-progress-' + testId, doneKey = 'pt-done-' + testId;
-  const load = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
-  const save = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const load = k => { if (preview) return null; try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+  const save = (k, v) => { if (preview) return; try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
   let test = null, messages = [], pairs = [], idx = 0, current = {}, locked = false;
 
   function message(title, body) { $('msgTitle').textContent = title; $('msgBody').textContent = body; show('message'); }
 
+  // Rough reading time: about 4 seconds per pair.
+  function timeEstimate(pairCount) {
+    const mins = pairCount * 4 / 60;
+    return mins < 1.25 ? 'about a minute' : 'about ' + Math.round(mins) + ' minutes';
+  }
+
   async function init() {
+    if (preview) $('previewBar').classList.add('on');
     if (!db.configured()) return message('Not set up yet', 'This page is not connected to a database. See README.md in the project folder.');
     if (!testId) return message('No test selected', 'This link is missing the test id. Ask whoever sent it for a fresh link.');
     try { test = await db.getTest(testId); } catch (e) { return message('Something went wrong', e.message); }
     if (!test) return message('Test not found', 'This link does not match any test. It may have been deleted.');
-    if (test.closed) return message('This test is closed', 'Thanks for your interest. It is no longer taking responses.');
+    if (test.closed && !preview) return message('This test is closed', 'Thanks for your interest. It is no longer taking responses.');
     messages = test.messages;
+    document.title = test.name;
+    $('question').textContent = test.question || 'Which message do you prefer?';
 
     const done = load(doneKey);
     if (done) { current = done.choices; pairs = analysis.allPairs(messages.length); return showResults(false); }
@@ -83,7 +104,10 @@
       show('survey'); renderPair();
     } else {
       $('introTitle').textContent = test.name;
-      $('introCount').textContent = analysis.allPairs(messages.length).length + ' pairs, about ' + Math.max(1, Math.round(messages.length * messages.length / 28)) + ' to 2 minutes.';
+      $('introScenario').textContent = test.scenario || '';
+      $('introScenario').style.display = test.scenario ? '' : 'none';
+      const pairCount = analysis.allPairs(messages.length).length;
+      $('introCount').textContent = pairCount + ' pairs, ' + timeEstimate(pairCount) + '.';
       show('intro');
     }
   }
@@ -125,11 +149,13 @@
   });
 
   async function finish() {
-    try {
-      await db.addResponses([{ test_id: testId, choices: current, simulated: false }]);
-    } catch (e) {
-      locked = false;
-      return message('Could not save your answers', e.message + ' Please check your connection and reload this page; your answers are kept until then.');
+    if (!preview) {
+      try {
+        await db.addResponses([{ test_id: testId, choices: current, simulated: false }]);
+      } catch (e) {
+        locked = false;
+        return message('Could not save your answers', e.message + ' Please check your connection and reload this page; your answers are kept until then.');
+      }
     }
     save(doneKey, { choices: current }); save(progressKey, null);
     showResults(true);
@@ -149,11 +175,13 @@
     });
     const skipped = pairs.length - w.reduce((s, x) => s + x, 0);
     $('resultsLead').textContent = (fresh ? 'Here is your personal ranking, by how often each message won its matchups' : 'You already completed this test. Here is your ranking') + (skipped ? ' (' + skipped + ' skipped).' : '.');
+    $('resultsNote').textContent = preview ? 'This was a preview, so nothing was saved.' : 'Your answers have been recorded. You can close this page.';
+    $('againBtn').style.display = preview ? '' : 'none';   // repeating is for previews only
     show('results');
   }
 
   $('beginBtn').addEventListener('click', startSurvey);
-  $('againBtn').addEventListener('click', () => { if (confirm('Start again? This adds a second set of answers.')) { save(doneKey, null); startSurvey(); } });
+  $('againBtn').addEventListener('click', startSurvey);
 
   init();
 </script>
