@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: cache fix
+
+- Scripts and styles now carry a version number in their address so a freshly deployed page can never run with a stale cached script. This caused one failed "Create test" right after a deploy (an error about a null messages column); reloading fixed it.
+
 ## 2026-11-01: back button and plainer captions
 
 - Participants can step back one pair at a time with a quiet Back link, see what they picked, and change it. For fixing mis-taps on phones.

@@ -21,7 +21,7 @@ Participant's phone or laptop          Your laptop
 └────────────────────────────────────────────────────────────────┘
 ```
 
-1. **GitHub Pages** hosts the web pages. Every push to `main` goes live within a minute or two at https://andrewdavid2990.github.io/preference-test/. There is no server of our own; the pages are static files.
+1. **GitHub Pages** hosts the web pages. Every push to `main` goes live within a minute or two at https://andrewdavid2990.github.io/preference-test/. There is no server of our own; the pages are static files. Browsers may keep a copy of each file for up to 10 minutes, so right after a change you might need to reload once; the scripts carry version numbers so an old script is never mixed with a new page.
 2. **Supabase** holds the data and the admin login. It is a hosted Postgres database with a web API in front of it, on the free plan.
 3. **The browser** does all the work: rendering, randomising pair order, the statistics. Nothing is computed on a server.
 
