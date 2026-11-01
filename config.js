@@ -5,6 +5,6 @@
 // what the database policies in supabase/schema.sql permit.
 
 const CONFIG = {
-  SUPABASE_URL: "https://YOUR-PROJECT.supabase.co",
+  SUPABASE_URL: "https://eajbqxaamwpqaumncklw.supabase.co",
   SUPABASE_ANON_KEY: "YOUR-ANON-KEY"
 };
