@@ -16,7 +16,7 @@
        index.html?new        create a test
        index.html?test=ID    results for one test -->
 
-  <div class="who" id="who"><span id="whoEmail"></span> <button class="link" id="signOutBtn" type="button">Sign out</button></div>
+  <div class="who" id="who"><span id="whoEmail"></span> <a class="link" href="?password">Change password</a> <button class="link" id="signOutBtn" type="button">Sign out</button></div>
   <div class="alert" id="alert"></div>
 
   <section id="notconfigured" class="screen">
@@ -43,7 +43,23 @@
       <div class="row">
         <button class="btn primary" id="loginBtn" type="submit">Sign in</button>
       </div>
-      <p class="small" style="margin:16px 0 0">Forgot the password? Reset it from the Supabase dashboard (Authentication, Users).</p>
+      <p class="small" style="margin:16px 0 0">Forgot the password? Ask whoever manages the Supabase project to reset it.</p>
+    </form>
+  </section>
+
+  <section id="password" class="screen">
+    <p class="crumb"><a href="./">All tests</a></p>
+    <h1>Change password</h1>
+    <p class="lead">Pick something long. You stay signed in on this browser after changing it.</p>
+    <form id="passwordForm" class="card" style="max-width:420px">
+      <label class="field" for="newPassword">New password</label>
+      <input class="text" id="newPassword" type="password" autocomplete="new-password" minlength="10" required>
+      <label class="field" for="newPassword2">Type it again</label>
+      <input class="text" id="newPassword2" type="password" autocomplete="new-password" minlength="10" required>
+      <div class="row">
+        <button class="btn primary" id="passwordBtn" type="submit">Save new password</button>
+        <span class="hint" id="passwordHint"></span>
+      </div>
     </form>
   </section>
 
@@ -187,6 +203,7 @@
     $('whoEmail').textContent = auth.email(); $('who').classList.add('on');
     try {
       if (params.get('test')) await openTest(params.get('test'));
+      else if (params.has('password')) { show('password'); $('newPassword').focus(); }
       else if (params.has('new')) { renderList(['', '']); show('setup'); $('testName').focus(); }
       else await renderTestList();
     } catch (e) { showError(e); }
@@ -198,6 +215,14 @@
     try { await auth.signIn($('loginEmail').value.trim(), $('loginPassword').value); await init(); }
     catch (err) { showError(new Error(/invalid/i.test(err.message) ? 'Wrong email or password.' : err.message)); }
     $('loginBtn').disabled = false;
+  });
+  $('passwordForm').addEventListener('submit', async e => {
+    e.preventDefault(); clearError();
+    if ($('newPassword').value !== $('newPassword2').value) return showError(new Error('The two passwords do not match.'));
+    $('passwordBtn').disabled = true;
+    try { await auth.changePassword($('newPassword').value); $('passwordHint').textContent = 'Saved.'; $('newPassword').value = $('newPassword2').value = ''; }
+    catch (err) { showError(err); }
+    $('passwordBtn').disabled = false;
   });
   $('signOutBtn').addEventListener('click', async () => { await auth.signOut(); location.href = './'; });
 

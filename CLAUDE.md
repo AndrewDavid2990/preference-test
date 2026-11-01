@@ -13,14 +13,14 @@ Documentation is part of every change. When you change behaviour, update in the 
 Plain HTML, CSS and vanilla JS, one Google Font, no build step, no framework. Hosted on GitHub Pages from `main` at https://andrewdavid2990.github.io/preference-test/. Data lives in a Supabase (hosted Postgres) project, accessed through its REST API with plain `fetch`. Setup steps for the owner are in README.md.
 
 Files:
-- `index.html`: admin page. `?new` creates a test, `?test=ID` shows results for one test, no query shows the list of tests.
+- `index.html`: admin page. `?new` creates a test, `?test=ID` shows results for one test, `?password` changes the password, no query shows the list of tests. Every route except the setup notice requires sign in.
 - `survey.html?t=ID`: participant page. Intro, survey, thank you screen with the participant's personal ranking.
 - `style.css`: shared styles, light and dark via CSS variables on :root.
 - `analysis.js`: all the maths, pure functions with no DOM or network. Takes `n` (message count) and `choices` objects.
 - `db.js`: every database call. Sends the admin login token when `auth` is loaded and signed in, otherwise the anon key. Swap the backend by changing only this file.
-- `auth.js`: admin login via Supabase Auth REST (`/auth/v1/token`, grant types password and refresh_token). Session kept in localStorage under `pt-session`; `auth.token()` refreshes when within 60s of expiry. Loaded by index.html only.
+- `auth.js`: admin login via Supabase Auth REST (`/auth/v1/token`, grant types password and refresh_token; `PUT /auth/v1/user` to change password). Session kept in localStorage under `pt-session`; `auth.token()` refreshes when within 60s of expiry, with one shared in-flight refresh so parallel requests do not reuse a refresh token. Loaded by index.html only.
 - `config.js`: Supabase URL and anon key. Placeholders until the owner fills them in; pages show a setup notice when unconfigured.
-- `supabase/schema.sql`: tables and the initial fully open policies. `supabase/002-login.sql`: drops the open write/read-responses policies and grants `authenticated` full access. Net effect: anon can select tests and insert responses; everything else needs a login. Sign ups are disabled in the Supabase dashboard, so any `authenticated` user is an admin.
+- `supabase/schema.sql`: tables and the initial fully open policies. `supabase/002-login.sql`: adds `admins (email)` and `is_admin()`, and alters the write and read-responses policies to `authenticated` with `is_admin()`. Net effect: anon can select tests and insert responses; everything else needs a signed in user listed in `admins`. Sign ups are left on (harmless, unlisted users get nothing). Both files have been applied to the live project `eajbqxaamwpqaumncklw`.
 - `HOW-IT-WORKS.md`, `CHANGELOG.md`: owner facing docs, keep them current.
 
 Data model:
@@ -37,8 +37,8 @@ Admin features: sign in and out, tests list with response counts, create test, p
 - Total wins is the headline ranking. In a full round-robin it equals average rank, so it is fair. The other views exist because total wins hides ties, rivals, splits, and junk responses.
 - Participants can be hidden from the Consistency view (individually, or "Hide all flagged"). Hidden participants drop out of every other view. Threshold for flagged: more than 15% of triples are cycles. 7 to 15% is labelled "Some noise" and kept.
 - Supabase over browser storage because participants answer on their own devices and results must collect in one place. Plain REST calls over the Supabase JS client so there is nothing to install and the code stays readable.
-- Login is Supabase email and password auth called with plain fetch, no SDK, for the same reason. No roles: every signed in user is an admin, and the dashboard is the only place accounts are created. Password reset is done from the dashboard rather than a reset email flow, to keep the code small.
-- Database changes are numbered SQL files in `supabase/` that the owner pastes into the SQL Editor. Never rewrite an already run file; add a new one.
+- Login is Supabase email and password auth called with plain fetch, no SDK, for the same reason. Admin status is an `admins` table checked inside the policies rather than a dashboard toggle, so it is visible in SQL and does not depend on dashboard settings. No roles beyond listed or not. Forgotten passwords are reset from the dashboard (or via the connector) rather than a reset email flow, which would need a Site URL and a reset page.
+- Database changes are numbered SQL files in `supabase/`, applied through the Supabase connector (`execute_sql`; `apply_migration` triggers a confirmation prompt that times out, and `drop policy` counts as destructive, so prefer `alter policy`). Never rewrite an already applied file; add a new one. Accounts are created with `POST /auth/v1/signup` using the anon key and then confirmed with `update auth.users set email_confirmed_at = now()`; the signup endpoint is rate limited to one call per minute.
 
 ## Analysis methods in the code
 

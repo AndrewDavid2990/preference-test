@@ -26,11 +26,13 @@ More docs: [HOW-IT-WORKS.md](HOW-IT-WORKS.md) explains the machinery in plain la
 
 ### 2. Create the admin login
 
-1. In the Supabase sidebar open **Authentication**, then **Users**, and click **Add user**, then **Create new user**. Enter your email and a password, tick **Auto Confirm User**, and create it. This is the account you sign in to the admin page with.
-2. Still under Authentication, open **Sign In / Providers** (on some dashboards just **Providers**), click **Email**, and turn off **Allow new users to sign up**. Save. Now only accounts you create in the dashboard can sign in.
-3. Back in the **SQL Editor**, run the contents of `supabase/002-login.sql`. This changes the access rules so that results and admin actions need a login, while participants can still load a test and submit answers without one.
+Already done for this project (the connector in Claude can run these steps). For the record, or for a fresh project:
 
-To add a teammate later, repeat step 1 for them. To change a password, open the user in Authentication, Users, and use the reset option there.
+1. In the **SQL Editor**, run `supabase/002-login.sql`. It creates an `admins` table and changes the access rules so results and admin actions need a signed in user whose email is listed there. Participants can still load a test and submit answers without a login.
+2. Add each admin's email to the table: `insert into admins (email) values ('name@example.com');`
+3. Create their account: Supabase sidebar, **Authentication**, **Users**, **Add user**, **Create new user**, with **Auto Confirm User** ticked. Or ask Claude to do it through the connector.
+
+Each admin changes their own password from the **Change password** link at the top of the admin page. If a password is lost, reset it from Authentication, Users in the dashboard, or ask Claude.
 
 ### 3. Put the pages online
 
@@ -44,7 +46,7 @@ Until it is online, you can still open `index.html` directly from your computer 
 
 ## Day to day
 
-1. Open the admin page and sign in (you stay signed in on that browser until you sign out). Click **New test**. Name it (participants see the name), enter the messages, click **Create test**.
+1. Open the admin page and sign in (you stay signed in on that browser until you sign out). **Change password** at the top of the page is where you set your own. Click **New test**. Name it (participants see the name), enter the messages, click **Create test**.
 2. Copy the participant link and send it out. Each participant answers every pair once; their progress is kept if they refresh, and the page remembers when they have finished.
 3. Watch results come in with **Refresh results**. The Consistency tab flags random clickers; hiding someone there drops them from every other view (hidden choices are remembered in your browser, not in the database).
 4. **Close test** stops new responses. **Export CSV** downloads every choice, one row per pair per participant.
@@ -53,6 +55,6 @@ Until it is online, you can still open `index.html` directly from your computer 
 ## Good to know
 
 - Messages cannot be edited after a test is created, because responses refer to messages by position. Create a new test instead.
-- The admin page needs a login. Anyone with a participant link can respond, and the link is unguessable but not secret, so send it to a known list.
+- The admin page needs a login, and only emails in the `admins` table get in. Anyone with a participant link can respond, and the link is unguessable but not secret, so send it to a known list.
 - Supabase free projects pause after about a week of no activity. If the admin page cannot connect after a quiet spell, open the Supabase dashboard and click Restore project.
 - All analysis maths lives in `analysis.js`, all database calls in `db.js`. Swapping the database later means changing only `db.js`.

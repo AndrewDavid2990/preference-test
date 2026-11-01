@@ -38,6 +38,18 @@ const auth = {
     this.save(s);
   },
 
+  // Set a new password for the signed in user.
+  async changePassword(password) {
+    const t = await this.token(); if (!t) throw new Error("You are not signed in.");
+    const res = await fetch(CONFIG.SUPABASE_URL + "/auth/v1/user", {
+      method: "PUT",
+      headers: { apikey: CONFIG.SUPABASE_ANON_KEY, "Content-Type": "application/json", Authorization: "Bearer " + t },
+      body: JSON.stringify({ password })
+    });
+    let data = null; try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && (data.msg || data.message || data.error_description)) || "Could not change the password (" + res.status + ").");
+  },
+
   async signOut() {
     const s = this.session; this.save(null);
     if (s && s.access_token) { try { await this.call("logout", {}, s.access_token); } catch (e) {} }

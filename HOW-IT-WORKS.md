@@ -27,7 +27,7 @@ Participant's phone or laptop          Your laptop
 
 ## What happens when you create a test
 
-1. You sign in. The browser sends your email and password to Supabase's login service and gets back a **token**, a long string that proves who you are for about an hour (it is renewed automatically while the tab is open). The token is kept in your browser's local storage so you stay signed in between visits.
+1. You sign in. The browser sends your email and password to Supabase's login service and gets back a **token**, a long string that proves who you are for about an hour (it is renewed automatically while the tab is open). The token is kept in your browser's local storage so you stay signed in between visits. Change password sends a new password to the same service using that token.
 2. You fill in a name and up to 8 messages and click Create test. The browser sends one row to the `tests` table: `{ name, messages: ["...", "..."], closed: false }`. Supabase gives it an id, a random string like `312c6449-f645-40e8-9021-0009b993ee72`.
 3. The results page opens with a participant link that is just `survey.html?t=` plus that id.
 
@@ -60,7 +60,7 @@ Messages are stored as a list and every response refers to them by position (mes
 ## Security and access, honestly
 
 - The **anon key** in `config.js` is public by design. It identifies the project, not a person. What it can do is decided by the database rules (row level security policies, in `supabase/`). With it alone you can read tests and add a response, nothing else.
-- The **admin login** is Supabase's built in email and password auth. Sign ups are turned off in the dashboard, so only accounts created there can sign in. Any signed in account has full access; there are no roles.
+- The **admin login** is Supabase's built in email and password auth. Being signed in is not enough on its own: the database rules also check that the signed in email is in a small `admins` table. So even if a stranger created an account, they would see nothing. There are no roles beyond that; every listed admin has full access.
 - The **service role key** (also in the Supabase dashboard) bypasses every rule. It is never used by this tool and should never be put in the code or shared.
 - Participant links are unguessable (random ids) but not secret: anyone with the link can respond, as many times as they clear their browser storage. That is acceptable for headline tests sent to a known list.
 - Response data contains no personal information. A response is a test id, a set of choices, and a timestamp.
@@ -74,10 +74,10 @@ Messages are stored as a list and every response refers to them by position (mes
 | `style.css` | Shared styles. Colours are CSS variables on `:root` with a dark mode override. |
 | `analysis.js` | All statistics, pure functions. Used by both pages. |
 | `db.js` | Every database read and write. Adds the login token when there is one. |
-| `auth.js` | Sign in, sign out, token storage and renewal. Admin page only. |
+| `auth.js` | Sign in, sign out, change password, token storage and renewal. Admin page only. |
 | `config.js` | Supabase project URL and public anon key. |
 | `supabase/schema.sql` | Creates the two tables and the first, fully open rules. |
-| `supabase/002-login.sql` | Replaces the open rules with login required for admin actions. |
+| `supabase/002-login.sql` | Adds the `admins` table and makes the admin rules require a listed, signed in email. |
 | `README.md` | Setup and day to day use. |
 | `HOW-IT-WORKS.md` | This file. |
 | `CHANGELOG.md` | What changed and when. |

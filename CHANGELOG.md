@@ -4,8 +4,9 @@ Newest first. Dates are when the change went live on `main`.
 
 ## 2026-11-01: admin login
 
-- Admin page now requires signing in with email and password (Supabase Auth). A "Signed in as" line with Sign out appears at the top.
-- Database rules tightened (`supabase/002-login.sql`): without a login you can only read tests and add responses, which is all the participant page needs. Results, creating, closing and deleting tests need a login.
+- Admin page now requires signing in with email and password (Supabase Auth). A "Signed in as" line with Change password and Sign out appears at the top.
+- Database rules tightened (`supabase/002-login.sql`): without a login you can only read tests and add responses, which is all the participant page needs. Results, creating, closing and deleting tests need a signed in user whose email is in the new `admins` table.
+- Applied to the live project and the first admin account created through the Supabase connector in Claude, so no dashboard steps were needed.
 - New `auth.js` handles sign in, sign out, and renewing the login token in the background.
 - New documentation: `HOW-IT-WORKS.md` and this changelog.
 
