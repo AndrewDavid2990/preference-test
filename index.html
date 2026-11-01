@@ -123,6 +123,7 @@
     <div class="row">
       <button class="btn" id="refreshBtn">Refresh results</button>
       <button class="btn" id="closeBtn"></button>
+      <button class="btn" id="summaryBtn">Client summary</button>
       <button class="btn" id="exportBtn">Export CSV</button>
       <button class="btn" id="simBtn">Add 15 simulated</button>
       <button class="btn" id="unsimBtn">Remove simulated</button>
@@ -183,6 +184,7 @@
 <script src="auth.js"></script>
 <script src="db.js"></script>
 <script src="analysis.js"></script>
+<script src="summary.js"></script>
 <script>
   const MAX = 8;
   const sample = [
@@ -349,6 +351,11 @@
     try { await db.deleteTest(test.id); location.href = './'; } catch (e) { showError(e); }
   });
   $('exportBtn').addEventListener('click', exportCsv);
+  $('summaryBtn').addEventListener('click', () => {
+    const parts = participants.filter(p => !p.hidden);
+    if (!parts.length) return showError(new Error('No responses to summarise yet.'));
+    summary.open(test, parts, participants.length - parts.length);
+  });
 
   function exportCsv() {
     const n = messages.length, q = s => '"' + String(s).replace(/"/g, '""') + '"';
@@ -387,9 +394,8 @@
     $('unsimBtn').disabled = !participants.some(p => p.simulated);
     renderConsistency();
     if (!P) { ['gRank', 'h2h', 'bt', 'condorcet', 'toptwo', 'spread'].forEach(id => $(id).innerHTML = ''); $('gRank').innerHTML = '<li class="empty">No responses yet. Share the participant link, or add simulated participants to see how the views work.</li>'; return; }
-    const { M, N } = analysis.h2hMatrix(n, parts);
-    const W = M.map(r => r.reduce((a, b) => a + b, 0)), Tot = N.map(r => r.reduce((a, b) => a + b, 0));
-    const order = messages.map((_, i) => i).sort((a, b) => (W[b] / (Tot[b] || 1)) - (W[a] / (Tot[a] || 1)));
+    const st = analysis.groupStats(n, parts);
+    const { M, N, W, Tot, order } = st;
 
     // ranking
     const gr = $('gRank'); gr.innerHTML = '';
@@ -421,21 +427,12 @@
       t.appendChild(tr);
     });
 
-    // Bradley-Terry with bootstrap
-    const p = analysis.bradleyTerry(M, N);
-    const B = 150, boots = messages.map(() => []);
-    if (P >= 5) for (let b = 0; b < B; b++) {
-      const resample = Array.from({ length: P }, () => parts[Math.floor(Math.random() * P)]);
-      const { M: m2, N: n2 } = analysis.h2hMatrix(n, resample);
-      analysis.bradleyTerry(m2, n2).forEach((v, i) => boots[i].push(v / (v + 1)));
-    }
-    const btOrder = messages.map((_, i) => i).sort((a, b) => p[b] - p[a]);
+    // Bradley-Terry strength with bootstrap band
+    const btOrder = messages.map((_, i) => i).sort((a, b) => st.strength[b].value - st.strength[a].value);
     const bt = $('bt'); bt.innerHTML = '';
     btOrder.forEach((i, pos) => {
       const li = document.createElement('li');
-      const v = p[i] / (p[i] + 1);
-      let lo = v, hi = v;
-      if (boots[i].length) { const s = boots[i].slice().sort((a, b) => a - b); lo = s[Math.floor(s.length * 0.05)]; hi = s[Math.floor(s.length * 0.95)]; }
+      const { value: v, lo, hi } = st.strength[i];
       li.innerHTML = '<span class="pos"></span><span class="text"></span><span class="stat"><span class="n"></span><div class="ci"><div class="range"></div><div class="pt"></div></div></span>';
       li.querySelector('.pos').textContent = pos + 1; li.querySelector('.text').textContent = messages[i];
       li.querySelector('.n').textContent = pct(v) + (P >= 5 ? ' (' + pct(lo) + ' to ' + pct(hi) + ')' : '');
@@ -445,8 +442,7 @@
     });
 
     // winner check
-    const top = order[0], second = order[1];
-    const losses = order.slice(1).filter(j => N[top][j] && M[top][j] / N[top][j] <= 0.5);
+    const { top, losses } = st;
     $('condorcet').innerHTML = '';
     const cb = document.createElement('div'); cb.className = 'badge ' + (losses.length ? 'warn' : 'good');
     cb.textContent = losses.length
@@ -455,30 +451,25 @@
     $('condorcet').appendChild(cb);
     $('toptwo').innerHTML = '';
     if (n >= 2) {
-      const k = M[top][second], m = N[top][second], pv = m ? analysis.binomTwoSided(k, m) : 1;
-      const tb = document.createElement('div'); tb.className = 'badge ' + (pv < 0.1 && k > m - k ? 'good' : 'warn');
+      const { k, m, p: pv, verdict } = st.topTwo;
+      const tb = document.createElement('div'); tb.className = 'badge ' + (verdict === 'tie' ? 'warn' : 'good');
       tb.textContent = k + ' of ' + m + ' participants picked #1 over #2 head to head. ' +
-        (pv < 0.05 ? 'That is a clear gap (p = ' + pv.toFixed(3) + ').' : pv < 0.1 ? 'That is a likely gap but not conclusive (p = ' + pv.toFixed(2) + ').' : 'That is a coin flip (p = ' + pv.toFixed(2) + '). Treat #1 and #2 as tied.');
+        (verdict === 'clear' ? 'That is a clear gap (p = ' + pv.toFixed(3) + ').' : verdict === 'likely' ? 'That is a likely gap but not conclusive (p = ' + pv.toFixed(2) + ').' : 'That is a coin flip (p = ' + pv.toFixed(2) + '). Treat #1 and #2 as tied.');
       $('toptwo').appendChild(tb);
       const nt = document.createElement('p'); nt.className = 'small'; nt.textContent = 'p is the chance of a split this lopsided if participants had no real preference between them. Under 0.05 is the usual bar.';
       $('toptwo').appendChild(nt);
     }
 
     // polarization
-    const allRanks = parts.map(pt => analysis.ranksOf(n, pt.choices));
     const sp = $('spread'); sp.innerHTML = '';
     order.forEach((i, pos) => {
-      const rs = allRanks.map(r => r[i]);
-      const mean = rs.reduce((a, b) => a + b, 0) / rs.length;
-      const sd = Math.sqrt(rs.reduce((a, b) => a + (b - mean) ** 2, 0) / rs.length);
-      const counts = Array(n).fill(0); rs.forEach(r => counts[Math.min(n - 1, Math.round(r) - 1)]++);
+      const { mean, sd, counts, split } = st.spread[i];
       const mx = Math.max(...counts, 1);
-      const topShare = rs.filter(r => r <= 2).length / rs.length, botShare = rs.filter(r => r >= n - 1).length / rs.length;
       const li = document.createElement('li');
       li.innerHTML = '<span class="pos"></span><span class="text"></span><span class="stat"><span class="n"></span><div class="hist"></div></span>';
       li.querySelector('.pos').textContent = pos + 1; li.querySelector('.text').textContent = messages[i];
       let note = 'avg rank ' + mean.toFixed(1) + ', spread ' + sd.toFixed(1);
-      if (n >= 4 && topShare >= 0.3 && botShare >= 0.3) { note += ' · split'; li.querySelector('.n').className = 'n flag'; }
+      if (split) { note += ' · split'; li.querySelector('.n').className = 'n flag'; }
       li.querySelector('.n').textContent = note;
       const h = li.querySelector('.hist');
       counts.forEach((c, r) => { const d = document.createElement('div'); d.style.height = Math.round(c / mx * 100) + '%'; d.title = c + ' ranked it #' + (r + 1); h.appendChild(d); });

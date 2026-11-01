@@ -2,6 +2,12 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: client summary
+
+- **Client summary** button on the results page. Opens a one page branded write up in a new tab: plain language verdict (clear winner, likely winner, top two close, or no outright winner), ranking with win rate and strength, head to head grid, things to watch, and how the test worked. Save as PDF or Download as a standalone page.
+- The results tabs and the summary now share one calculation (`analysis.groupStats`), so they can never disagree.
+- Form field labels are plain sentence case instead of small uppercase captions.
+
 ## 2026-11-01: Tested branding
 
 - Both pages now follow the Tested visual identity: white canvas, Ink text and buttons, Montserrat headlines (the web stand in for Gotham) with Poppins for everything else, square corners, no shadows, no blue. The Tested wordmark sits at the top of every screen (reversed version in dark mode).

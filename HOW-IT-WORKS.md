@@ -46,7 +46,8 @@ Messages are stored as a list and every response refers to them by position (mes
 
 1. The admin page fetches the test row and every response row for it, using your login token. Without a valid token the database returns nothing for responses.
 2. Everything on the six tabs is calculated in your browser from those rows, in `analysis.js`. Nothing is stored. Refresh results simply fetches again and recalculates.
-3. Hiding a participant on the Consistency tab is remembered in your browser only (local storage keyed by test id). The response stays in the database; it is just left out of the maths on your machine. Another admin on another laptop would not see your hidden choices. Deleting a participant removes the row from the database for everyone.
+3. Client summary builds a complete web page as text in your browser (numbers from the same maths as the tabs, the logo and styles inlined) and opens it in a new tab. Save as PDF uses the browser's print; Download saves that page as a single file. Nothing about the summary is stored anywhere; reopen it any time from the results page.
+4. Hiding a participant on the Consistency tab is remembered in your browser only (local storage keyed by test id). The response stays in the database; it is just left out of the maths on your machine. Another admin on another laptop would not see your hidden choices. Deleting a participant removes the row from the database for everyone.
 
 ## The maths, briefly
 
@@ -72,7 +73,8 @@ Messages are stored as a list and every response refers to them by position (mes
 | `index.html` | Admin page: sign in, tests list, create, results, export. All its own logic is inline at the bottom. |
 | `survey.html` | Participant page. Its own logic is inline at the bottom. |
 | `style.css` | Shared styles, following the Tested visual identity. Colours are CSS variables on `:root` with a dark mode override. |
-| `analysis.js` | All statistics, pure functions. Used by both pages. |
+| `analysis.js` | All statistics, pure functions. Used by both pages. `groupStats` computes everything the results tabs and the summary show. |
+| `summary.js` | Builds the client summary page from a test and its responses. |
 | `db.js` | Every database read and write. Adds the login token when there is one. |
 | `auth.js` | Sign in, sign out, change password, token storage and renewal. Admin page only. |
 | `config.js` | Supabase project URL and public anon key. |

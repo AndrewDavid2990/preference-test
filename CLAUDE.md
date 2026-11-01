@@ -17,7 +17,8 @@ Files:
 - `survey.html?t=ID`: participant page. Intro (name, scenario, time estimate), survey (test's question above every pair), thank you screen with the participant's personal ranking. `&preview` runs it with no database write and no localStorage, shows a banner, ignores `closed`, and offers "run again". Static og:title/description for link previews.
 - `style.css`: shared styles following the Tested visual identity (tokens mirror `DESIGN.md` in the `tested` repo): white canvas, Ink text and primary buttons, Montserrat 700/800 for h1/h2/h3/.question, Poppins body, 3px corners, no shadows. `--red` only for the wordmark, one focal element per screen, and data visuals (`.meter`, `.hist`, `.ci`, head to head shading). Status and flag classes (`.pill`, `.flag`, `.ok`, `.badge.good/.warn`) are typographic, not colored. Light and dark via CSS variables on :root; dark swaps to the reversed logo.
 - `tested.svg`, `tested-reversed.svg`: logo lockup copied from the `tested` repo. Never rebuild or recolor the mark by hand; the favicon is a deliberately abstract two bar shape, not the mark.
-- `analysis.js`: all the maths, pure functions with no DOM or network. Takes `n` (message count) and `choices` objects.
+- `analysis.js`: all the maths, pure functions with no DOM or network. Takes `n` (message count) and `choices` objects. `groupStats(n, parts)` returns everything the group views and the summary need (order, win rates, Bradley-Terry strength with 90% band when P >= 5, Condorcet losses, top two binomial verdict "clear" / "likely" / "tie", per message polarization, skips). renderGroup in index.html only renders from it.
+- `summary.js`: builds the client summary as one self contained HTML string (inline CSS, inline logo fetched once at load, Google Fonts link) and opens it as a blob URL in a new tab. A blob URL rather than `window.open('') + document.write` because an about:blank tab has an opaque origin and Chromium refuses its downloads. `open()` must run synchronously inside the click handler for pop up blockers.
 - `db.js`: every database call. Sends the admin login token when `auth` is loaded and signed in, otherwise the anon key. Requests use `Prefer: return=representation` except `addResponses`, which uses `return=minimal` because returning rows requires select permission and anon has none on responses (PostgREST reports that as an RLS violation on insert). Swap the backend by changing only this file.
 - `auth.js`: admin login via Supabase Auth REST (`/auth/v1/token`, grant types password and refresh_token; `PUT /auth/v1/user` to change password). Session kept in localStorage under `pt-session`; `auth.token()` refreshes when within 60s of expiry, with one shared in-flight refresh so parallel requests do not reuse a refresh token. Loaded by index.html only.
 - `config.js`: Supabase URL and anon key. Placeholders until the owner fills them in; pages show a setup notice when unconfigured.
@@ -33,7 +34,7 @@ Data model:
 
 Browser-only state (localStorage): participant progress and "already completed" flag per test on the survey page; the set of hidden participant ids per test and the login session on the admin page.
 
-Admin features: sign in and out, change password, tests list with response counts, create test (name, scenario, question, messages), participant link with copy, preview link, refresh, close/reopen, export CSV (one row per pair per participant), add 15 simulated participants (flagged `simulated`), remove simulated, hide or delete a single participant, delete test (cascades to responses).
+Admin features: sign in and out, change password, tests list with response counts, create test (name, scenario, question, messages), participant link with copy, preview link, refresh, close/reopen, client summary (new tab, print or download), export CSV (one row per pair per participant), add 15 simulated participants (flagged `simulated`), remove simulated, hide or delete a single participant, delete test (cascades to responses).
 
 ## Product decisions already made
 
@@ -54,7 +55,6 @@ Admin features: sign in and out, change password, tests list with response count
 
 ## Likely next steps
 
-- A client-ready summary export (the CSV is raw choices).
 - Optional: time per choice as another junk-response signal.
 - Optional: participant metadata (segment, email) collected before the survey.
 
@@ -62,6 +62,7 @@ Admin features: sign in and out, change password, tests list with response count
 
 - Keep it simple and readable. The owner will read the code with AI help, not on his own.
 - Light and dark mode both supported via CSS variables on :root. Keep that working.
+- Form field labels are sentence case (the owner does not want the small uppercase "eyebrow" look on labels). Tracked uppercase captions stay only for the progress counter, Open/Closed status, table headers and the preview banner.
 - Visual changes follow the Tested brand rules (no blue or green UI colors, red never as a fill or warning, 0 to 4px radius, no shadows or gradients, sentence case, uppercase only for small tracked captions). Hover styles go inside `@media (hover: hover)`.
 - Mobile first layout. Pair cards stack on narrow screens.
 - Testing: `node test/smoke.js` before every push (fake database, no network). For changes to policies or auth, also verify against the live project with curl using the anon key and a real admin token, since the fake cannot catch PostgREST subtleties like return=representation needing select permission. Clean up any test rows afterwards.

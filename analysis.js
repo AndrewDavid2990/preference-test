@@ -92,6 +92,51 @@ const analysis = {
     return Math.min(1, s);
   },
 
+  // Everything the group views and the client summary need, computed once from the included
+  // participants. Bootstrap bands are only computed with 5 or more participants.
+  groupStats(n, parts) {
+    const P = parts.length;
+    const { M, N } = this.h2hMatrix(n, parts);
+    const W = M.map(r => r.reduce((a, b) => a + b, 0)), Tot = N.map(r => r.reduce((a, b) => a + b, 0));
+    const rate = i => Tot[i] ? W[i] / Tot[i] : 0;
+    const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => rate(b) - rate(a));
+
+    // Bradley-Terry strength, as chance of beating an average message, with a 90% band
+    const p = this.bradleyTerry(M, N);
+    const boots = Array.from({ length: n }, () => []);
+    if (P >= 5) for (let b = 0; b < 150; b++) {
+      const resample = Array.from({ length: P }, () => parts[Math.floor(Math.random() * P)]);
+      const { M: m2, N: n2 } = this.h2hMatrix(n, resample);
+      this.bradleyTerry(m2, n2).forEach((v, i) => boots[i].push(v / (v + 1)));
+    }
+    const strength = p.map((v, i) => {
+      const val = v / (v + 1); let lo = val, hi = val;
+      if (boots[i].length) { const s = boots[i].slice().sort((a, b) => a - b); lo = s[Math.floor(s.length * 0.05)]; hi = s[Math.floor(s.length * 0.95)]; }
+      return { value: val, lo, hi, banded: boots[i].length > 0 };
+    });
+
+    // winner checks
+    const top = order[0], second = order[1];
+    const losses = order.slice(1).filter(j => N[top][j] && M[top][j] / N[top][j] <= 0.5);
+    const k = second === undefined ? 0 : M[top][second], m = second === undefined ? 0 : N[top][second];
+    const pv = m ? this.binomTwoSided(k, m) : 1;
+    const topTwo = { k, m, p: pv, verdict: pv < 0.05 && k > m - k ? "clear" : pv < 0.1 && k > m - k ? "likely" : "tie" };
+
+    // polarization: where each message landed in every personal ranking
+    const allRanks = parts.map(pt => this.ranksOf(n, pt.choices));
+    const spread = Array.from({ length: n }, (_, i) => {
+      const rs = allRanks.map(r => r[i]);
+      const mean = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : 0;
+      const sd = rs.length ? Math.sqrt(rs.reduce((a, b) => a + (b - mean) ** 2, 0) / rs.length) : 0;
+      const counts = Array(n).fill(0); rs.forEach(r => counts[Math.min(n - 1, Math.round(r) - 1)]++);
+      const topShare = rs.length ? rs.filter(r => r <= 2).length / rs.length : 0, botShare = rs.length ? rs.filter(r => r >= n - 1).length / rs.length : 0;
+      return { mean, sd, counts, split: n >= 4 && topShare >= 0.3 && botShare >= 0.3 };
+    });
+
+    const skipped = parts.reduce((s, pt) => s + Object.values(pt.choices).filter(v => v === null).length, 0);
+    return { P, M, N, W, Tot, rate, order, strength, top, second, losses, topTwo, spread, skipped };
+  },
+
   /* ---------- simulation ---------- */
 
   gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); },

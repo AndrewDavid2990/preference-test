@@ -108,6 +108,22 @@ async function fakeAuth(route, req) {
     await page.screenshot({ path: path.join(SHOTS, 'admin-' + v + '.png'), fullPage: true });
   }
   check(await page.locator('#consist li').count() === 15, 'consistency lists 15');
+
+  /* client summary opens in a new tab, reads right, downloads */
+  const [sum] = await Promise.all([ctx.waitForEvent('page'), page.click('#summaryBtn')]);
+  await sum.waitForSelector('.verdict'); await sum.waitForTimeout(300);
+  const verdict = await sum.locator('.verdict h2').textContent();
+  check(['Clear winner', 'Likely winner', 'Top two are close', 'No outright winner'].includes(verdict), 'summary verdict: ' + verdict);
+  check(await sum.locator('table.rank tr').count() === 9, 'summary ranking has 8 rows');
+  check(await sum.locator('table.grid td').count() === 64, 'summary head to head grid');
+  check((await sum.locator('h1').textContent()) === 'Sample headline test' && (await sum.locator('.brief').textContent()).includes('book a call'), 'summary title, scenario and question');
+  check((await sum.locator('body').innerText()).includes('simulated'), 'summary warns about simulated data');
+  check(await sum.locator('.logo svg').count() === 1, 'summary carries the logo inline');
+  await sum.screenshot({ path: path.join(SHOTS, 'summary.png'), fullPage: true });
+  const [sdl] = await Promise.all([sum.waitForEvent('download'), sum.click('#dl')]);
+  const shtml = fs.readFileSync(await sdl.path(), 'utf8');
+  check(sdl.suggestedFilename() === 'sample-headline-test-summary.html' && !/class="toolbar"/.test(shtml) && /Ranking/.test(shtml), 'summary downloads as standalone html');
+  await sum.close();
   await page.click('#consist li:first-child .acts button:first-child'); check((await lead()).includes('1 hidden'), 'hide one participant');
   await page.reload(); await page.waitForSelector('#group.active'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.includes('1 hidden'));
   check(true, 'hidden state and login survive reload');
