@@ -6,5 +6,5 @@
 
 const CONFIG = {
   SUPABASE_URL: "https://eajbqxaamwpqaumncklw.supabase.co",
-  SUPABASE_ANON_KEY: "YOUR-ANON-KEY"
+  SUPABASE_ANON_KEY: "sb_publishable_ZeVQCGRIX3lJcS9nv7oJTw_rsHnx22m"
 };
