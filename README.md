@@ -9,7 +9,7 @@ Two pages:
 | `index.html` | You | List of tests, create a test, copy the participant link, read results, export CSV. |
 | `survey.html?t=ID` | Participants | Opens straight into the survey for one test. Saves their answers when they finish. |
 
-Both are plain HTML, CSS and JavaScript. No build step. Data is stored in a free Supabase database so tests and responses survive refreshes and collect from every participant's device.
+Both are plain HTML, CSS and JavaScript. No build step. Built for [Tested](https://tested.agency); the brand guide and other agency material live in the separate `tested` repo. Data is stored in a free Supabase database so tests and responses survive refreshes and collect from every participant's device.
 
 ## One time setup (about 10 minutes)
 
@@ -24,13 +24,11 @@ Both are plain HTML, CSS and JavaScript. No build step. Data is stored in a free
 
 ### 2. Put the pages online
 
-Participants need a web address for `survey.html`. The simplest free option is GitHub Pages, since this folder already lives in a GitHub repo:
+Participants need a web address for `survey.html`. This repo is public, so GitHub Pages hosts it for free:
 
-1. On GitHub, open the repo, then **Settings**, then **Pages**.
+1. On GitHub, open this repo, then **Settings**, then **Pages**.
 2. Under **Build and deployment**, set Source to **Deploy from a branch**, choose `main` and `/ (root)`, and save.
-3. After a minute, the admin page is at `https://<your-github-username>.github.io/<repo-name>/preference-test/` and the participant links the admin page generates will point to the same place.
-
-GitHub Pages is free for public repos. If the repo is private, GitHub needs a paid plan for Pages; the alternative is dropping the `preference-test` folder on Netlify (free) and using that address instead.
+3. After a minute, the admin page is at `https://andrewdavid2990.github.io/preference-test/` and the participant links it generates point to the same place.
 
 Until it is online, you can still open `index.html` directly from your computer to create tests and view results. The participant link will only work for other people once the pages are hosted.
 

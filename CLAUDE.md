@@ -2,11 +2,13 @@
 
 Pairwise preference test for short text messages (headlines, value props, subject lines). Participants see every pair of messages, pick one each time, and the choices roll up into a ranking with several analysis views. Built for Tested (tested.agency), a CRO agency for B2B SaaS, to use in messaging engagements.
 
+Commit and push directly to `main` unless Andrew says otherwise for a given change. Don't open a pull request unless asked.
+
 Owner is non-technical. Explain technical choices in plain language. No em dashes in any written output or UI copy.
 
 ## Current state
 
-Plain HTML, CSS and vanilla JS, one Google Font, no build step, no framework. Data lives in a Supabase (hosted Postgres) project, accessed through its REST API with plain `fetch`. Setup steps for the owner are in README.md.
+Plain HTML, CSS and vanilla JS, one Google Font, no build step, no framework. Hosted on GitHub Pages from `main` at https://andrewdavid2990.github.io/preference-test/. Data lives in a Supabase (hosted Postgres) project, accessed through its REST API with plain `fetch`. Setup steps for the owner are in README.md.
 
 Files:
 - `index.html`: admin page. `?new` creates a test, `?test=ID` shows results for one test, no query shows the list of tests.
