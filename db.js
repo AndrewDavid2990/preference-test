@@ -5,6 +5,10 @@
 // Tables (see supabase/schema.sql):
 //   tests      { id, name, messages: [string], closed, created_at }
 //   responses  { id, test_id, choices: { "i-j": winnerIndex | null }, simulated, created_at }
+//
+// Permissions are enforced by the database, not here. Without a login (the participant page)
+// you can read tests and add responses. With a login (the admin page, see auth.js) you can do
+// everything. The admin page's token is sent automatically when auth.js is loaded and signed in.
 
 const db = {
   configured() {
@@ -12,11 +16,12 @@ const db = {
   },
 
   async request(method, path, body) {
+    const userToken = typeof auth !== "undefined" ? await auth.token() : null;
     const res = await fetch(CONFIG.SUPABASE_URL + "/rest/v1/" + path, {
       method,
       headers: {
         apikey: CONFIG.SUPABASE_ANON_KEY,
-        Authorization: "Bearer " + CONFIG.SUPABASE_ANON_KEY,
+        Authorization: "Bearer " + (userToken || CONFIG.SUPABASE_ANON_KEY),
         "Content-Type": "application/json",
         Prefer: "return=representation"
       },
@@ -25,6 +30,8 @@ const db = {
     if (!res.ok) {
       let detail = "";
       try { detail = (await res.json()).message || ""; } catch (e) {}
+      if (res.status === 401 && userToken) { auth.save(null); location.reload(); }   // session no longer valid: back to sign in
+      if (res.status === 401 || res.status === 403 || /row-level security/.test(detail)) detail = "You do not have permission to do that. " + detail;
       throw new Error("Database request failed (" + res.status + "). " + detail);
     }
     return res.status === 204 ? null : res.json();

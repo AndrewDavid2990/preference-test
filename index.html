@@ -16,6 +16,7 @@
        index.html?new        create a test
        index.html?test=ID    results for one test -->
 
+  <div class="who" id="who"><span id="whoEmail"></span> <button class="link" id="signOutBtn" type="button">Sign out</button></div>
   <div class="alert" id="alert"></div>
 
   <section id="notconfigured" class="screen">
@@ -29,6 +30,21 @@
       </ol>
       <p class="small">Full steps are in README.md.</p>
     </div>
+  </section>
+
+  <section id="login" class="screen">
+    <h1>Sign in</h1>
+    <p class="lead">The admin page is for the Tested team. Participants do not need to sign in; they use the survey link.</p>
+    <form id="loginForm" class="card" style="max-width:420px">
+      <label class="field" for="loginEmail">Email</label>
+      <input class="text" id="loginEmail" type="email" autocomplete="username" required>
+      <label class="field" for="loginPassword">Password</label>
+      <input class="text" id="loginPassword" type="password" autocomplete="current-password" required>
+      <div class="row">
+        <button class="btn primary" id="loginBtn" type="submit">Sign in</button>
+      </div>
+      <p class="small" style="margin:16px 0 0">Forgot the password? Reset it from the Supabase dashboard (Authentication, Users).</p>
+    </form>
   </section>
 
   <section id="list" class="screen">
@@ -134,6 +150,7 @@
 </div>
 
 <script src="config.js"></script>
+<script src="auth.js"></script>
 <script src="db.js"></script>
 <script src="analysis.js"></script>
 <script>
@@ -165,12 +182,24 @@
 
   async function init() {
     if (!db.configured()) return show('notconfigured');
+    auth.load();
+    if (!auth.signedIn()) { show('login'); $('loginEmail').focus(); return; }
+    $('whoEmail').textContent = auth.email(); $('who').classList.add('on');
     try {
       if (params.get('test')) await openTest(params.get('test'));
       else if (params.has('new')) { renderList(['', '']); show('setup'); $('testName').focus(); }
       else await renderTestList();
     } catch (e) { showError(e); }
   }
+
+  /* ---------- sign in and out ---------- */
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault(); clearError(); $('loginBtn').disabled = true;
+    try { await auth.signIn($('loginEmail').value.trim(), $('loginPassword').value); await init(); }
+    catch (err) { showError(new Error(/invalid/i.test(err.message) ? 'Wrong email or password.' : err.message)); }
+    $('loginBtn').disabled = false;
+  });
+  $('signOutBtn').addEventListener('click', async () => { await auth.signOut(); location.href = './'; });
 
   /* ---------- tests list ---------- */
   async function renderTestList() {

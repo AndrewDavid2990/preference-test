@@ -1,5 +1,6 @@
 -- Database setup for the preference test tool.
 -- Paste this whole file into the Supabase SQL Editor and click Run. It only needs to run once.
+-- Then run 002-login.sql to require a login for admin actions.
 
 create table if not exists tests (
   id          uuid primary key default gen_random_uuid(),

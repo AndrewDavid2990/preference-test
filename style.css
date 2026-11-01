@@ -113,6 +113,11 @@ td.self { background: var(--line); }
 .share input { flex: 1; min-width: 220px; font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); }
 .share .btn { padding: 10px 14px; font-size: 15px; }
 
+/* signed in as ... */
+.who { display: none; justify-content: flex-end; gap: 4px; align-items: center; font-size: 13px; color: var(--muted); margin: -16px 0 12px; }
+.who.on { display: flex; }
+.who .link { font-size: 13px; padding: 2px 4px; }
+
 /* error and status messages */
 .alert { display: none; padding: 12px 14px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 15px; margin: 0 0 18px; }
 .alert.on { display: block; }

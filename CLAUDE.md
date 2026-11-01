@@ -6,6 +6,8 @@ Commit and push directly to `main` unless Andrew says otherwise for a given chan
 
 Owner is non-technical. Explain technical choices in plain language. No em dashes in any written output or UI copy.
 
+Documentation is part of every change. When you change behaviour, update in the same commit: README.md (setup and day to day use), HOW-IT-WORKS.md (plain language explanation of the machinery), CHANGELOG.md (newest first, dated), and this file (state, decisions, conventions).
+
 ## Current state
 
 Plain HTML, CSS and vanilla JS, one Google Font, no build step, no framework. Hosted on GitHub Pages from `main` at https://andrewdavid2990.github.io/preference-test/. Data lives in a Supabase (hosted Postgres) project, accessed through its REST API with plain `fetch`. Setup steps for the owner are in README.md.
@@ -15,17 +17,19 @@ Files:
 - `survey.html?t=ID`: participant page. Intro, survey, thank you screen with the participant's personal ranking.
 - `style.css`: shared styles, light and dark via CSS variables on :root.
 - `analysis.js`: all the maths, pure functions with no DOM or network. Takes `n` (message count) and `choices` objects.
-- `db.js`: every database call. Swap the backend by changing only this file.
+- `db.js`: every database call. Sends the admin login token when `auth` is loaded and signed in, otherwise the anon key. Swap the backend by changing only this file.
+- `auth.js`: admin login via Supabase Auth REST (`/auth/v1/token`, grant types password and refresh_token). Session kept in localStorage under `pt-session`; `auth.token()` refreshes when within 60s of expiry. Loaded by index.html only.
 - `config.js`: Supabase URL and anon key. Placeholders until the owner fills them in; pages show a setup notice when unconfigured.
-- `supabase/schema.sql`: tables and row level security policies. Policies are fully open to the anon key (no login yet).
+- `supabase/schema.sql`: tables and the initial fully open policies. `supabase/002-login.sql`: drops the open write/read-responses policies and grants `authenticated` full access. Net effect: anon can select tests and insert responses; everything else needs a login. Sign ups are disabled in the Supabase dashboard, so any `authenticated` user is an admin.
+- `HOW-IT-WORKS.md`, `CHANGELOG.md`: owner facing docs, keep them current.
 
 Data model:
 - `tests { id, name, messages: [string], closed, created_at }`. Messages are immutable after creation because responses refer to them by index.
 - `responses { id, test_id, choices: { "i-j": winnerIndex | null }, simulated, created_at }`. One row per participant. Key `"i-j"` always has i < j. `null` means skipped.
 
-Browser-only state (localStorage): participant progress and "already completed" flag per test on the survey page; the set of hidden participant ids per test on the admin page.
+Browser-only state (localStorage): participant progress and "already completed" flag per test on the survey page; the set of hidden participant ids per test and the login session on the admin page.
 
-Admin features: tests list with response counts, create test, participant link with copy, refresh, close/reopen, export CSV (one row per pair per participant), add 15 simulated participants (flagged `simulated`), remove simulated, delete test (cascades to responses).
+Admin features: sign in and out, tests list with response counts, create test, participant link with copy, refresh, close/reopen, export CSV (one row per pair per participant), add 15 simulated participants (flagged `simulated`), remove simulated, delete test (cascades to responses).
 
 ## Product decisions already made
 
@@ -33,7 +37,8 @@ Admin features: tests list with response counts, create test, participant link w
 - Total wins is the headline ranking. In a full round-robin it equals average rank, so it is fair. The other views exist because total wins hides ties, rivals, splits, and junk responses.
 - Participants can be hidden from the Consistency view (individually, or "Hide all flagged"). Hidden participants drop out of every other view. Threshold for flagged: more than 15% of triples are cycles. 7 to 15% is labelled "Some noise" and kept.
 - Supabase over browser storage because participants answer on their own devices and results must collect in one place. Plain REST calls over the Supabase JS client so there is nothing to install and the code stays readable.
-- No login for the MVP. Anyone with a link can read and write. Tighten the policies in `schema.sql` when a login is added.
+- Login is Supabase email and password auth called with plain fetch, no SDK, for the same reason. No roles: every signed in user is an admin, and the dashboard is the only place accounts are created. Password reset is done from the dashboard rather than a reset email flow, to keep the code small.
+- Database changes are numbered SQL files in `supabase/` that the owner pastes into the SQL Editor. Never rewrite an already run file; add a new one.
 
 ## Analysis methods in the code
 
@@ -45,7 +50,6 @@ Admin features: tests list with response counts, create test, participant link w
 
 ## Likely next steps
 
-- A simple login for the admin page (Supabase Auth), then tighten the policies.
 - A client-ready summary export (the CSV is raw choices).
 - Optional: time per choice as another junk-response signal.
 - Optional: participant metadata (segment, email) collected before the survey.
