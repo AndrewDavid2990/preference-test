@@ -68,7 +68,7 @@ async function fakeAuth(route, req) {
   const ctx = await browser.newContext({ viewport: { width: 1000, height: 900 } });
   const errors = [];
   ctx.on('page', pg => { pg.on('pageerror', e => errors.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); }); });
-  await ctx.route('**/config.js', r => r.fulfill({ contentType: 'text/javascript', body: 'const CONFIG={SUPABASE_URL:"https://fake-project.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_fake"};' }));
+  await ctx.route('**/config.js*', r => r.fulfill({ contentType: 'text/javascript', body: 'const CONFIG={SUPABASE_URL:"https://fake-project.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_fake"};' }));
   await ctx.route('https://fake-project.supabase.co/rest/v1/**', fakeRest);
   await ctx.route('https://fake-project.supabase.co/auth/v1/**', fakeAuth);
   await ctx.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '' }));
@@ -162,7 +162,7 @@ async function fakeAuth(route, req) {
   /* real participant, on a phone */
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   phone.on('page', pg => pg.on('pageerror', e => errors.push('phone pageerror: ' + e.message)));
-  await phone.route('**/config.js', r => r.fulfill({ contentType: 'text/javascript', body: 'const CONFIG={SUPABASE_URL:"https://fake-project.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_fake"};' }));
+  await phone.route('**/config.js*', r => r.fulfill({ contentType: 'text/javascript', body: 'const CONFIG={SUPABASE_URL:"https://fake-project.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_fake"};' }));
   await phone.route('https://fake-project.supabase.co/rest/v1/**', fakeRest);
   await phone.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '' }));
   const sp = await phone.newPage();
