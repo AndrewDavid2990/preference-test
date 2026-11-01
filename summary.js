@@ -7,7 +7,9 @@ const summary = {
   logo: "",   // the logo file's contents, fetched once so it can be inlined in the summary
 
   // Build the whole page as a string. Everything is inlined so the downloaded file stands alone.
-  build(test, parts, hiddenCount, segment) {
+  build(test, parts, hiddenCount, filters) {
+    filters = filters || [];
+    const segQs = test.segments || [];
     const n = test.messages.length, st = analysis.groupStats(n, parts);
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const pct = x => Math.round(x * 100) + "%";
@@ -55,17 +57,27 @@ const summary = {
         return `<td style="${style}">${st.N[i][j] ? pct(r) : ""}</td>`;
       }).join("") + "</tr>").join("") + "</table>";
 
-    /* by segment: top three per group, when the test has segments and no filter is on */
+    /* by segment: for each unfiltered segment question, the top three messages per answer */
     let bySegment = "";
-    const segs = (test.segment_options || []).filter(o => parts.some(p => p.segment === o));
-    if (!segment && segs.length >= 2) {
+    segQs.forEach((sq, qi) => {
+      if (filters[qi]) return;
+      const segs = sq.options.filter(o => parts.some(p => (p.segments || [])[qi] === o));
+      if (segs.length < 2) return;
       const rows = segs.map(o => {
-        const group = parts.filter(p => p.segment === o), gs = analysis.groupStats(n, group);
+        const group = parts.filter(p => (p.segments || [])[qi] === o), gs = analysis.groupStats(n, group);
         return `<tr><td class="seg">${esc(o)}<div class="band">${group.length} participant${group.length === 1 ? "" : "s"}</div></td>` +
           [0, 1, 2].map(k => gs.order[k] === undefined ? "<td></td>" : `<td>${msg(gs.order[k])}<div class="band">${pct(gs.rate(gs.order[k]))} win rate</div></td>`).join("") + "</tr>";
       }).join("");
-      bySegment = `<h2>By segment</h2><p class="method">Top three messages within each group${segs.some(o => parts.filter(p => p.segment === o).length < 5) ? ". Small groups are indicative only" : ""}.</p>
-        <table class="rank segs"><tr><th>Segment</th><th>#1</th><th>#2</th><th>#3</th></tr>${rows}</table>`;
+      bySegment += `<h2>By segment: ${esc(sq.question)}</h2><p class="method">Top three messages within each group${segs.some(o => parts.filter(p => (p.segments || [])[qi] === o).length < 5) ? ". Small groups are indicative only" : ""}.</p>
+        <table class="rank segs"><tr><th>Answer</th><th>#1</th><th>#2</th><th>#3</th></tr>${rows}</table>`;
+    });
+
+    /* what participants said */
+    let comments = "";
+    const said = parts.filter(p => p.comment);
+    if (said.length) {
+      comments = `<h2>In their words</h2><p class="method">Answers to "${esc(test.comment_prompt)}". Each person's own top choice is shown first.</p><ul class="quotes">` +
+        said.map(p => { const top = analysis.groupStats(n, [p]).order[0]; return `<li><span class="band">${msg(top)}${(p.segments || []).filter(Boolean).length ? " · " + esc(p.segments.filter(Boolean).join(", ")) : ""}</span><br>${esc(p.comment)}</li>`; }).join("") + "</ul>";
     }
 
     /* things to watch */
@@ -123,6 +135,7 @@ const summary = {
   .band { font-size: 12px; font-weight: 400; color: var(--muted); }
   .tag { margin-left: 6px; }
   .segs td { font-size: 13px; } .segs .seg { font-weight: 600; width: 160px; }
+  .quotes { list-style: none; padding: 0; } .quotes li { padding: 10px 14px; border-left: 3px solid var(--line); margin-bottom: 10px; color: var(--ink); white-space: pre-wrap; }
   .grid { border: 1.5px solid var(--ink); width: auto; }
   .grid th, .grid td { padding: 7px 9px; border: 1px solid var(--line); text-align: center; white-space: nowrap; font-weight: 600; color: var(--ink); }
   .grid th.rowhead { text-align: left; max-width: 260px; white-space: normal; font-weight: 500; font-size: 12px; }
@@ -141,7 +154,7 @@ const summary = {
   <div class="logo">${logo}</div>
   <div class="eyebrow">Preference test summary</div>
   <h1>${esc(test.name)}</h1>
-  <p class="meta">${st.P} participant${st.P === 1 ? "" : "s"}${segment ? ` in "${esc(segment === "(none)" ? "No answer" : segment)}"` : ""} · ${n} messages · ${n * (n - 1) / 2} pairs each · ${date}</p>
+  <p class="meta">${st.P} participant${st.P === 1 ? "" : "s"}${filters.filter(Boolean).length ? " in " + filters.filter(Boolean).map(f => `"${esc(f === "(none)" ? "No answer" : f)}"`).join(" and ") : ""} · ${n} messages · ${n * (n - 1) / 2} pairs each · ${date}</p>
   ${test.scenario || test.question ? `<div class="brief">${test.scenario ? `<p><span class="label">Scenario</span><br>${esc(test.scenario)}</p>` : ""}<p><span class="label">Question</span><br>${esc(test.question || "Which message do you prefer?")}</p></div>` : ""}
 
   <div class="verdict${headline === "Clear winner" || headline === "Likely winner" ? "" : " soft"}">
@@ -161,6 +174,8 @@ const summary = {
   ${grid}
 
   ${bySegment}
+
+  ${comments}
 
   ${notes.length ? `<h2>Things to watch</h2><ul>${notes.join("")}</ul>` : ""}
 
@@ -191,8 +206,8 @@ const summary = {
   // rather than written into a blank tab, so the tab keeps this site's identity and its own
   // Download button is allowed to work. Must be called directly from a click so pop up
   // blockers allow the new tab.
-  open(test, parts, hiddenCount, segment) {
-    const html = this.build(test, parts, hiddenCount, segment);
+  open(test, parts, hiddenCount, filters) {
+    const html = this.build(test, parts, hiddenCount, filters);
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
     const w = window.open(url, "_blank");
     if (!w) throw new Error("The browser blocked the new tab. Allow pop ups for this site and try again.");

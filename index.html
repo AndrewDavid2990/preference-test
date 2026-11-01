@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <div class="wrap">
@@ -103,13 +103,11 @@
     <h3>About the participant</h3>
     <p class="note">Optional. Asked once, after the welcome screen and before the first pair. Segments let you compare results between groups of people.</p>
 
-    <label class="field" for="segQuestion">Segment question</label>
-    <input class="text" id="segQuestion" type="text" maxlength="160" placeholder="Which best describes you?">
-    <p class="hint under">Leave blank to skip.</p>
-
-    <label class="field" for="segOptions">Answers to choose from</label>
-    <textarea class="text" id="segOptions" rows="3" maxlength="600" placeholder="Founder or CEO&#10;Marketing&#10;Sales"></textarea>
-    <p class="hint under">One per line.</p>
+    <div id="segList"></div>
+    <div class="row" style="margin:-6px 0 22px">
+      <button class="btn" id="addSeg" type="button">Add a segment question</button>
+      <span class="hint" id="segHint"></span>
+    </div>
 
     <label class="field">Email address</label>
     <div class="choices" id="askEmail">
@@ -117,6 +115,11 @@
       <label><input type="radio" name="askEmail" value="optional"> Optional</label>
       <label><input type="radio" name="askEmail" value="required"> Required</label>
     </div>
+
+    <h3>After the last pair</h3>
+    <label class="field" for="commentPrompt">Closing question</label>
+    <textarea class="text" id="commentPrompt" rows="2" maxlength="300">Your top rated message was {top choice}. What made you choose that message?</textarea>
+    <p class="hint under">Optional for participants, with a text box to answer. {top choice} becomes their own number one message. Leave blank to skip it.</p>
 
     <div class="row" style="margin-top:28px">
       <button class="btn primary" id="createBtn">Create test</button>
@@ -146,7 +149,7 @@
     <p class="small" style="margin:-10px 0 20px">Preview runs the survey without saving anything, so you can check it or show a client. Only send the participant link itself to real participants.</p>
 
     <div class="row">
-      <select class="btn" id="segmentFilter" style="display:none"></select>
+      <span id="segmentFilters" class="row"></span>
       <button class="btn" id="refreshBtn">Refresh results</button>
       <button class="btn" id="closeBtn"></button>
       <button class="btn" id="summaryBtn">Client summary</button>
@@ -163,6 +166,7 @@
       <button class="tab" data-v="v-winner">Winner check</button>
       <button class="tab" data-v="v-spread">Polarization</button>
       <button class="tab" data-v="v-consist">Consistency</button>
+      <button class="tab" data-v="v-comments">Comments</button>
     </div>
 
     <div class="view on" id="v-rank">
@@ -202,15 +206,19 @@
       </div>
       <ul class="plist" id="consist"></ul>
     </div>
+    <div class="view" id="v-comments">
+      <p class="note" id="commentsNote"></p>
+      <ul class="plist comments" id="comments"></ul>
+    </div>
   </section>
 
 </div>
 
-<script src="config.js?v=6"></script>
-<script src="auth.js?v=6"></script>
-<script src="db.js?v=6"></script>
-<script src="analysis.js?v=6"></script>
-<script src="summary.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<script src="auth.js?v=7"></script>
+<script src="db.js?v=7"></script>
+<script src="analysis.js?v=7"></script>
+<script src="summary.js?v=7"></script>
 <script>
   const MAX = 8;
   const sample = [
@@ -315,15 +323,43 @@
     const vals = [...document.querySelectorAll('#msgList input')].map(i => i.value);
     if (vals.length < MAX) { vals.push(''); renderList(vals); const ins = document.querySelectorAll('#msgList input'); ins[ins.length - 1].focus(); }
   });
+  /* segment questions on the setup form: up to 4, each a question plus answers one per line */
+  const MAX_SEGMENTS = 4;
+  function addSegBlock(question, options) {
+    const list = $('segList'); if (list.children.length >= MAX_SEGMENTS) return;
+    const k = list.children.length + 1;
+    const d = document.createElement('div'); d.className = 'segblock';
+    d.innerHTML = '<div class="row" style="justify-content:space-between;margin-bottom:8px"><label class="field" style="margin:0"></label><button class="link" type="button">Remove</button></div>'
+      + '<input class="text" type="text" maxlength="160" placeholder="Which best describes you?">'
+      + '<textarea class="text" rows="3" maxlength="600" placeholder="Founder or CEO&#10;Marketing&#10;Sales"></textarea><p class="hint under">Answers, one per line.</p>';
+    d.querySelector('label').textContent = 'Segment question ' + k;
+    d.querySelector('input').value = question || ''; d.querySelector('textarea').value = (options || []).join('\n');
+    d.querySelector('button').addEventListener('click', () => { d.remove(); updateSegHint(); });
+    list.appendChild(d); updateSegHint();
+  }
+  function readSegments() {
+    return [...document.querySelectorAll('#segList .segblock')].map(d => ({
+      question: d.querySelector('input').value.trim() || 'Which best describes you?',
+      options: d.querySelector('textarea').value.split('\n').map(x => x.trim()).filter(Boolean)
+    })).filter(sq => sq.options.length >= 2);
+  }
+  function updateSegHint() {
+    const n = document.querySelectorAll('#segList .segblock').length;
+    [...document.querySelectorAll('#segList .segblock label')].forEach((l, i) => l.textContent = 'Segment question ' + (i + 1));
+    $('addSeg').disabled = n >= MAX_SEGMENTS;
+    $('segHint').textContent = n ? 'A question with fewer than two answers is left out.' : 'None yet. Participants go straight to the first pair.';
+  }
+  $('addSeg').addEventListener('click', () => addSegBlock());
+  updateSegHint();
+
   $('sampleBtn').addEventListener('click', () => { renderList(sample); if (!$('testName').value) $('testName').value = 'Sample headline test'; });
   $('createBtn').addEventListener('click', async () => {
     const name = $('testName').value.trim() || 'Untitled test';
     $('createBtn').disabled = true;
     const scenario = $('testScenario').value.trim(), question = $('testQuestion').value.trim() || 'Which message do you prefer?';
-    const segment_options = $('segOptions').value.split('\n').map(x => x.trim()).filter(Boolean);
-    const segment_question = segment_options.length ? ($('segQuestion').value.trim() || 'Which best describes you?') : '';
+    const segments = readSegments(), comment_prompt = $('commentPrompt').value.trim();
     const ask_email = document.querySelector('input[name="askEmail"]:checked').value;
-    try { const t = await db.createTest({ name, messages: readMessages(), scenario, question, segment_question, segment_options: segment_question ? segment_options : [], ask_email }); location.href = '?test=' + t.id; }
+    try { const t = await db.createTest({ name, messages: readMessages(), scenario, question, segments, comment_prompt, ask_email }); location.href = '?test=' + t.id; }
     catch (e) { showError(e); $('createBtn').disabled = false; }
   });
 
@@ -342,22 +378,25 @@
     $('shareUrl').value = url; $('previewLink').href = url + '&preview';
     $('briefScenario').textContent = test.scenario ? 'Scenario: ' + test.scenario : '';
     $('briefScenario').style.display = test.scenario ? '' : 'none';
+    test.segments = test.segments || [];
     $('briefQuestion').textContent = 'Question: ' + (test.question || 'Which message do you prefer?')
-      + (test.segment_question ? ' · Segment: ' + test.segment_question : '') + (test.ask_email && test.ask_email !== 'off' ? ' · Email ' + test.ask_email : '');
-    const sf = $('segmentFilter');
-    if ((test.segment_options || []).length) {
-      sf.style.display = '';
-      sf.innerHTML = '<option value="">All segments</option>' + test.segment_options.map(o => '<option></option>').join('');
-      [...sf.options].slice(1).forEach((o, i) => { o.value = test.segment_options[i]; o.textContent = test.segment_options[i]; });
-      sf.innerHTML += '<option value="(none)">No answer</option>';
-    }
+      + test.segments.map(sq => ' · Segment: ' + sq.question).join('') + (test.ask_email && test.ask_email !== 'off' ? ' · Email ' + test.ask_email : '')
+      + (test.comment_prompt ? ' · Closing question: ' + test.comment_prompt : '');
+    const sf = $('segmentFilters'); sf.innerHTML = '';
+    test.segments.forEach((sq, qi) => {
+      const sel = document.createElement('select'); sel.className = 'btn'; sel.title = sq.question; sel.dataset.q = qi;
+      const all = document.createElement('option'); all.value = ''; all.textContent = 'All: ' + sq.question; sel.appendChild(all);
+      sq.options.forEach(o => { const op = document.createElement('option'); op.value = o; op.textContent = o; sel.appendChild(op); });
+      const none = document.createElement('option'); none.value = '(none)'; none.textContent = 'No answer'; sel.appendChild(none);
+      sel.addEventListener('change', rerenderKeepingTab); sf.appendChild(sel);
+    });
     await reloadResponses();
     show('group');
   }
   async function reloadResponses() {
     const rows = await db.listResponses(test.id);
     const hidden = loadHidden();
-    participants = rows.map(r => ({ id: r.id, choices: r.choices, times: r.times || {}, simulated: r.simulated, hidden: hidden.has(r.id), created_at: r.created_at, segment: r.segment || '', email: r.email || '' }));
+    participants = rows.map(r => ({ id: r.id, choices: r.choices, times: r.times || {}, simulated: r.simulated, hidden: hidden.has(r.id), created_at: r.created_at, segments: r.segments || [], email: r.email || '', comment: r.comment || '' }));
     renderStatus();
     rerenderKeepingTab();
   }
@@ -378,8 +417,8 @@
   });
   $('simBtn').addEventListener('click', async () => {
     const sim = analysis.simulate(messages.length, 15, latent); latent = sim.latent;
-    const opts = test.segment_options || [];
-    try { await db.addResponses(sim.choices.map(c => ({ test_id: test.id, choices: c.choices, times: c.times, simulated: true, segment: opts.length ? opts[Math.floor(Math.random() * opts.length)] : '' }))); await reloadResponses(); } catch (e) { showError(e); }
+    const pick = sq => sq.options[Math.floor(Math.random() * sq.options.length)];
+    try { await db.addResponses(sim.choices.map(c => ({ test_id: test.id, choices: c.choices, times: c.times, simulated: true, segments: (test.segments || []).map(pick) }))); await reloadResponses(); } catch (e) { showError(e); }
   });
   $('unsimBtn').addEventListener('click', async () => {
     try { await db.deleteSimulated(test.id); await reloadResponses(); } catch (e) { showError(e); }
@@ -392,17 +431,18 @@
   $('summaryBtn').addEventListener('click', () => {
     const parts = included();
     if (!parts.length) return showError(new Error('No responses to summarise yet.'));
-    summary.open(test, parts, participants.filter(p => p.hidden).length, segmentChoice());
+    summary.open(test, parts, participants.filter(p => p.hidden).length, segmentChoices());
   });
 
   function exportCsv() {
     const n = messages.length, q = s => '"' + String(s).replace(/"/g, '""') + '"';
-    const lines = [['participant', 'submitted', 'segment', 'email', 'simulated', 'included', 'cycle_rate', 'median_seconds', 'message_a', 'message_b', 'winner', 'seconds'].join(',')];
+    const segCols = (test.segments || []).map(sq => q(sq.question));
+    const lines = [['participant', 'submitted', ...segCols, 'email', 'comment', 'simulated', 'included', 'cycle_rate', 'median_seconds', 'message_a', 'message_b', 'winner', 'seconds'].join(',')];
     participants.forEach((pt, i) => {
       const j = analysis.junk(n, pt), rate = j.rate.toFixed(3), med = j.median === null ? '' : j.median.toFixed(1);
       analysis.allPairs(n).forEach(([a, b]) => {
         const k = pt.choices[analysis.key(a, b)], ms = (pt.times || {})[analysis.key(a, b)];
-        lines.push([i + 1, q(pt.created_at), q(pt.segment), q(pt.email), pt.simulated ? 'yes' : 'no', pt.hidden ? 'no' : 'yes', rate, med, q(messages[a]), q(messages[b]), k === null || k === undefined ? 'skipped' : q(messages[k]), typeof ms === 'number' ? (ms / 1000).toFixed(1) : ''].join(','));
+        lines.push([i + 1, q(pt.created_at), ...segCols.map((_, qi) => q(pt.segments[qi] || '')), q(pt.email), q(pt.comment), pt.simulated ? 'yes' : 'no', pt.hidden ? 'no' : 'yes', rate, med, q(messages[a]), q(messages[b]), k === null || k === undefined ? 'skipped' : q(messages[k]), typeof ms === 'number' ? (ms / 1000).toFixed(1) : ''].join(','));
       });
     });
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
@@ -425,18 +465,18 @@
     return li;
   }
 
-  // The participants the views are built from: not hidden, and in the chosen segment if one is picked.
-  function segmentChoice() { return $('segmentFilter').style.display === 'none' ? '' : $('segmentFilter').value; }
+  // The participants the views are built from: not hidden, and matching every segment dropdown that is set.
+  function segmentChoices() { return [...document.querySelectorAll('#segmentFilters select')].map(s => s.value); }   // '' = all, '(none)' = no answer
   function included() {
-    const seg = segmentChoice();
-    return participants.filter(p => !p.hidden && (!seg || (seg === '(none)' ? !p.segment : p.segment === seg)));
+    const want = segmentChoices();
+    return participants.filter(p => !p.hidden && want.every((w, qi) => !w || (w === '(none)' ? !p.segments[qi] : p.segments[qi] === w)));
   }
-  $('segmentFilter').addEventListener('change', rerenderKeepingTab);
 
   function renderGroup() {
     const parts = included(), n = messages.length, P = parts.length;
-    const simCount = parts.filter(p => p.simulated).length, hiddenCount = participants.filter(p => p.hidden).length, seg = segmentChoice();
-    $('groupLead').textContent = P + ' participant' + (P === 1 ? '' : 's') + (seg ? ' in "' + (seg === '(none)' ? 'No answer' : seg) + '"' : '') + (simCount ? ' (' + simCount + ' simulated)' : '') + (hiddenCount ? ', ' + hiddenCount + ' hidden' : '') + ', ' + n + ' messages, ' + (n * (n - 1) / 2) + ' pairs each.';
+    const simCount = parts.filter(p => p.simulated).length, hiddenCount = participants.filter(p => p.hidden).length;
+    const segText = segmentChoices().filter(Boolean).map(w => '"' + (w === '(none)' ? 'No answer' : w) + '"').join(' and ');
+    $('groupLead').textContent = P + ' participant' + (P === 1 ? '' : 's') + (segText ? ' in ' + segText : '') + (simCount ? ' (' + simCount + ' simulated)' : '') + (hiddenCount ? ', ' + hiddenCount + ' hidden' : '') + ', ' + n + ' messages, ' + (n * (n - 1) / 2) + ' pairs each.';
     $('unsimBtn').disabled = !participants.some(p => p.simulated);
     renderConsistency();
     if (!P) { ['gRank', 'h2h', 'bt', 'condorcet', 'toptwo', 'spread'].forEach(id => $(id).innerHTML = ''); $('gRank').innerHTML = '<li class="empty">No responses yet. Share the participant link, or add simulated participants to see how the views work.</li>'; return; }
@@ -532,7 +572,25 @@
   $('hideFlagged').addEventListener('click', () => { participants.forEach(pt => { if (analysis.junk(messages.length, pt).flagged) pt.hidden = true; }); saveHidden(); rerenderKeepingTab(); });
   $('includeAll').addEventListener('click', () => { participants.forEach(pt => pt.hidden = false); saveHidden(); rerenderKeepingTab(); });
 
+  function renderComments() {
+    const parts = included(), n = messages.length;
+    const withComment = participants.map((pt, q) => ({ pt, q })).filter(x => x.pt.comment && parts.includes(x.pt));
+    $('commentsNote').textContent = test.comment_prompt
+      ? (withComment.length ? withComment.length + ' of ' + parts.length + ' included participants answered "' + test.comment_prompt + '".' : 'No comments yet. Participants are asked "' + test.comment_prompt + '" after the last pair.')
+      : 'This test has no closing question.';
+    const ul = $('comments'); ul.innerHTML = '';
+    withComment.forEach(({ pt, q }) => {
+      const top = analysis.groupStats(n, [pt]).order[0];
+      const li = document.createElement('li');
+      li.innerHTML = '<div class="who-said"></div><div class="said"></div>';
+      li.querySelector('.who-said').textContent = 'Participant ' + (q + 1) + (pt.simulated ? ' (simulated)' : '') + pt.segments.filter(Boolean).map(x => ' · ' + x).join('') + ' · top choice: "' + messages[top] + '"';
+      li.querySelector('.said').textContent = pt.comment;
+      ul.appendChild(li);
+    });
+  }
+
   function renderConsistency() {
+    renderComments();
     const cl = $('consist'); cl.innerHTML = '';
     participants.forEach((pt, q) => {
       const { cycles, triples } = analysis.cyclesOf(messages.length, pt.choices);
@@ -541,7 +599,7 @@
       if (pt.hidden) li.className = 'hidden';
       const skipped = Object.values(pt.choices).filter(v => v === null).length;
       li.innerHTML = '<span></span><span class="small"></span><span></span><span class="acts"><button class="btn" type="button"></button><button class="btn danger" type="button">Delete</button></span>';
-      li.children[0].textContent = 'Participant ' + (q + 1) + (pt.simulated ? ' (simulated)' : '') + (pt.segment ? ' · ' + pt.segment : '') + (pt.email ? ' · ' + pt.email : '');
+      li.children[0].textContent = 'Participant ' + (q + 1) + (pt.simulated ? ' (simulated)' : '') + pt.segments.filter(Boolean).map(x => ' · ' + x).join('') + (pt.email ? ' · ' + pt.email : '');
       li.children[0].title = fmtDate(pt.created_at);
       li.children[1].textContent = cycles + ' cycle' + (cycles === 1 ? '' : 's') + ' in ' + triples + ' triples' + (skipped ? ', ' + skipped + ' skipped' : '') + (median === null ? '' : ', ' + median.toFixed(1) + 's per pair');
       li.children[2].textContent = rushed && rate > 0.15 ? 'Rushed and inconsistent' : rushed ? 'Rushed' : rate > 0.15 ? 'Check this one' : rate > 0.07 ? 'Some noise' : 'Consistent';

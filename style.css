@@ -75,7 +75,12 @@ input.text, textarea.text { margin-bottom: 22px; }
 .choices label { display: flex; gap: 10px; align-items: center; font-size: 15px; color: var(--ink); cursor: pointer; padding: 12px 14px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
 .choices label:has(input:checked) { border-color: var(--ink); }
 .choices input { accent-color: var(--ink); margin: 0; width: 18px; height: 18px; }
-select.btn { appearance: auto; padding-right: 10px; }
+select.btn { appearance: auto; padding-right: 10px; max-width: 260px; }
+.segblock { padding: 16px 18px 0; background: var(--panel); margin: 0 0 14px; }
+.segblock .text { background: var(--surface); }
+.comments li { display: block; }
+.comments .who-said { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.comments .said { white-space: pre-wrap; }
 textarea.text { resize: vertical; line-height: 1.5; }
 input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .msg-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }

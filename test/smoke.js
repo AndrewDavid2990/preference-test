@@ -34,6 +34,11 @@ function filterRows(rows, params) {
 }
 async function fakeRest(route, req) {
   const u = new URL(req.url()); const table = u.pathname.split('/').pop(); const params = u.searchParams; const method = req.method();
+  if (u.pathname.endsWith('/rpc/add_comment')) {   // the one function participants may call
+    const b = JSON.parse(req.postData()); const r = tables.responses.find(x => x.id === b.p_id);
+    if (r && r.comment === '') r.comment = String(b.p_comment).slice(0, 2000);
+    return route.fulfill({ status: 204, body: '' });
+  }
   const isAdmin = /Bearer tok/.test(req.headers()['authorization']); const wantRows = /representation/.test(req.headers()['prefer'] || '');
   const deny = () => route.fulfill({ status: 401, contentType: 'application/json', body: '{"message":"new row violates row-level security policy"}' });
   const body = req.postData() ? JSON.parse(req.postData()) : null;
@@ -46,7 +51,7 @@ async function fakeRest(route, req) {
   if (!isAdmin && method === 'POST' && wantRows) return deny();   // returning rows needs read permission
   let result;
   if (method === 'GET') { const sel = params.get('select'); result = filterRows(tables[table], params).map(r => { if (sel && sel !== '*') { const o = {}; sel.split(',').forEach(k => o[k] = r[k]); return o; } return r; }); }
-  else if (method === 'POST') { const rows = [].concat(body).map(b => ({ id: uuid(), closed: false, simulated: false, scenario: '', question: 'Which message do you prefer?', segment_question: '', segment_options: [], ask_email: 'off', segment: '', email: '', times: {}, created_at: new Date(Date.now() + seq * 1000).toISOString(), ...b })); tables[table].push(...rows); result = rows; }
+  else if (method === 'POST') { const rows = [].concat(body).map(b => ({ ...{ id: uuid() }, closed: false, simulated: false, scenario: '', question: 'Which message do you prefer?', segment_question: '', segment_options: [], ask_email: 'off', segments: [], email: '', comment: '', comment_prompt: 'Your top rated message was {top choice}. What made you choose that message?', times: {}, created_at: new Date(Date.now() + seq * 1000).toISOString(), ...b })); tables[table].push(...rows); result = rows; }
   else if (method === 'PATCH') { result = filterRows(tables[table], params); result.forEach(r => Object.assign(r, body)); }
   else if (method === 'DELETE') { const del = filterRows(tables[table], params); tables[table] = tables[table].filter(r => !del.includes(r)); if (table === 'tests') tables.responses = tables.responses.filter(r => !del.some(t => t.id === r.test_id)); result = del; }
   if (!wantRows && method !== 'GET') return route.fulfill({ status: method === 'POST' ? 201 : 204, body: '' });
@@ -92,14 +97,18 @@ async function fakeAuth(route, req) {
   await page.fill('#testScenario', 'Imagine you are looking for help improving conversions on your website.');
   await page.fill('#testQuestion', 'Which headline would make you more likely to book a call?');
   check((await page.locator('label[for="testName"]').textContent()) === 'Name' && (await page.locator('.hint.under').first().textContent()).includes('Only you see'), 'plain labels, name is private');
-  await page.fill('#segQuestion', 'Which best describes you?'); await page.fill('#segOptions', 'Founder\nMarketer\n\nSales');
+  await page.click('#addSeg'); await page.fill('#segList .segblock:nth-child(1) input', 'Which best describes you?'); await page.fill('#segList .segblock:nth-child(1) textarea', 'Founder\nMarketer\n\nSales');
+  await page.click('#addSeg'); await page.fill('#segList .segblock:nth-child(2) input', 'Company size'); await page.fill('#segList .segblock:nth-child(2) textarea', 'Under 50\n50 or more');
+  await page.click('#addSeg'); await page.fill('#segList .segblock:nth-child(3) textarea', 'only one');   // too few answers: dropped
+  check((await page.locator('#commentPrompt').inputValue()).includes('{top choice}'), 'closing question prefilled');
   await page.check('input[name="askEmail"][value="optional"]');
   check((await page.locator('#pairHint').textContent()).startsWith('28'), 'sample fills 8 messages, 28 comparisons');
   await page.click('#createBtn'); await page.waitForSelector('#group.active');
   const test = tables.tests[0];
   check(test.scenario.startsWith('Imagine') && test.question.startsWith('Which headline'), 'scenario and question saved');
-  check(test.segment_options.join() === 'Founder,Marketer,Sales' && test.ask_email === 'optional', 'segment options and email setting saved');
-  check((await page.locator('#briefQuestion').textContent()).includes('Segment: Which best'), 'results page shows segment question');
+  check(test.segments.length === 2 && test.segments[0].options.join() === 'Founder,Marketer,Sales' && test.segments[1].question === 'Company size' && test.ask_email === 'optional', 'two segment questions saved, the incomplete one dropped');
+  check(test.comment_prompt.startsWith('Your top rated'), 'closing question saved');
+  check((await page.locator('#briefQuestion').textContent()).includes('Segment: Which best') && (await page.locator('#segmentFilters select').count()) === 2, 'results page shows both segment questions with a filter each');
   check((await page.locator('#briefQuestion').textContent()).includes('book a call'), 'results page shows the question');
   check((await page.locator('#gRank .empty').count()) === 1, 'empty results state');
   const shareUrl = await page.inputValue('#shareUrl'); check(shareUrl === base + 'survey.html?t=' + test.id, 'share url');
@@ -113,16 +122,16 @@ async function fakeAuth(route, req) {
     await page.screenshot({ path: path.join(SHOTS, 'admin-' + v + '.png'), fullPage: true });
   }
   check(await page.locator('#consist li').count() === 15, 'consistency lists 15');
-  check(tables.responses.every(r => ['Founder', 'Marketer', 'Sales'].includes(r.segment)), 'simulated participants carry a segment');
+  check(tables.responses.every(r => ['Founder', 'Marketer', 'Sales'].includes(r.segments[0]) && ['Under 50', '50 or more'].includes(r.segments[1])), 'simulated participants answer every segment question');
   check(tables.responses.every(r => Object.keys(r.times).length === 28), 'simulated participants carry timings');
   check((await page.locator('#consist li .small').first().textContent()).includes('s per pair'), 'consistency shows seconds per pair');
   const rushedRows = await page.locator('#consist li .flag', { hasText: 'Rushed' }).count();
   const rushedData = tables.responses.filter(r => { const v = Object.values(r.times).sort((a, b) => a - b); return v[14] < 1500; }).length;
   check(rushedRows === rushedData, 'rushed flag matches the data (' + rushedRows + ' rushed)');
-  await page.selectOption('#segmentFilter', 'Founder');
-  const founders = tables.responses.filter(r => r.segment === 'Founder').length;
-  check((await lead()).startsWith(founders + ' participant') && (await lead()).includes('in "Founder"'), 'segment filter narrows the views: ' + await lead());
-  await page.selectOption('#segmentFilter', '');
+  await page.selectOption('#segmentFilters select:nth-child(1)', 'Founder'); await page.selectOption('#segmentFilters select:nth-child(2)', 'Under 50');
+  const both = tables.responses.filter(r => r.segments[0] === 'Founder' && r.segments[1] === 'Under 50').length;
+  check((await lead()).startsWith(both + ' participant') && (await lead()).includes('in "Founder" and "Under 50"'), 'two filters combine: ' + await lead());
+  await page.selectOption('#segmentFilters select:nth-child(1)', ''); await page.selectOption('#segmentFilters select:nth-child(2)', '');
 
   /* client summary opens in a new tab, reads right, downloads */
   const [sum] = await Promise.all([ctx.waitForEvent('page'), page.click('#summaryBtn')]);
@@ -134,7 +143,7 @@ async function fakeAuth(route, req) {
   check((await sum.locator('h1').textContent()) === 'Sample headline test' && (await sum.locator('.brief').textContent()).includes('book a call'), 'summary title, scenario and question');
   check((await sum.locator('body').innerText()).includes('simulated'), 'summary warns about simulated data');
   check(await sum.locator('.logo svg').count() === 1, 'summary carries the logo inline');
-  check(await sum.locator('table.segs tr').count() === 4, 'summary has a by segment table');
+  check(await sum.locator('table.segs').count() === 2, 'summary has a by segment table per question');
   await sum.screenshot({ path: path.join(SHOTS, 'summary.png'), fullPage: true });
   const [sdl] = await Promise.all([sum.waitForEvent('download'), sum.click('#dl')]);
   const shtml = fs.readFileSync(await sdl.path(), 'utf8');
@@ -154,11 +163,14 @@ async function fakeAuth(route, req) {
   check((await pv.locator('#introScenario').textContent()).startsWith('Imagine'), 'scenario shown on intro');
   check((await pv.locator('#intro h1').textContent()) === 'You have been invited to a quick survey' && !(await pv.locator('#intro').innerText()).includes('Sample headline'), 'generic welcome, test name hidden');
   await pv.click('#beginBtn'); await pv.waitForSelector('#about.active');
-  await pv.click('#aboutForm button'); check(await pv.locator('#aboutError').isVisible(), 'segment answer required');
-  await pv.check('input[name="segment"][value="Marketer"]'); await pv.click('#aboutForm button'); await pv.waitForSelector('#survey.active');
+  await pv.check('input[name="segment0"][value="Marketer"]'); await pv.click('#aboutForm button'); check(await pv.locator('#aboutError').isVisible(), 'every segment question must be answered');
+  await pv.check('input[name="segment1"][value="50 or more"]'); await pv.click('#aboutForm button'); await pv.waitForSelector('#survey.active');
   check((await pv.locator('#question').textContent()).startsWith('Which headline'), 'custom question above pairs');
   for (let i = 0; i < 28; i++) { await pv.click('#optA'); await pv.waitForTimeout(220); }
-  await pv.waitForSelector('#results.active');
+  await pv.waitForSelector('#comment.active');
+  check(/^Your top rated message was ".+"\. What made you choose that message\?$/.test(await pv.locator('#commentPrompt').textContent()), 'closing question with top choice filled in: ' + await pv.locator('#commentPrompt').textContent());
+  await pv.screenshot({ path: path.join(SHOTS, 'comment.png'), fullPage: true });
+  await pv.click('#commentSkip'); await pv.waitForSelector('#results.active');
   check(tables.responses.length === 14, 'preview saved nothing');
   check(await pv.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pt-progress') || k.startsWith('pt-done')).length) === 0, 'preview left no browser state');
   check(await pv.locator('#againBtn').isVisible(), 'preview offers run again');
@@ -176,7 +188,7 @@ async function fakeAuth(route, req) {
   await sp.screenshot({ path: path.join(SHOTS, 'phone-intro.png'), fullPage: true });
   await sp.tap('#beginBtn'); await sp.waitForSelector('#about.active');
   await sp.screenshot({ path: path.join(SHOTS, 'phone-about.png'), fullPage: true });
-  await sp.check('input[name="segment"][value="Sales"]'); await sp.fill('#email', 'pat@example.com'); await sp.tap('#aboutForm button'); await sp.waitForSelector('#survey.active');
+  await sp.check('input[name="segment0"][value="Sales"]'); await sp.check('input[name="segment1"][value="Under 50"]'); await sp.fill('#email', 'pat@example.com'); await sp.tap('#aboutForm button'); await sp.waitForSelector('#survey.active');
   check(await sp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll on phone');
   await sp.screenshot({ path: path.join(SHOTS, 'phone-survey.png'), fullPage: true });
   for (let i = 0; i < 5; i++) { await sp.tap(i % 2 ? '#optA' : '#optB'); await sp.waitForTimeout(220); }
@@ -186,10 +198,12 @@ async function fakeAuth(route, req) {
   await sp.reload(); await sp.waitForSelector('#survey.active');
   check((await sp.locator('#progText').textContent()) === 'Pair 7 of 28', 'progress survives reload');
   for (let i = 6; i < 28; i++) { await sp.tap(i % 2 ? '#optA' : '#optB'); await sp.waitForTimeout(220); }
-  await sp.waitForSelector('#results.active');
-  check(tables.responses.filter(r => !r.simulated).length === 1, 'response saved');
+  await sp.waitForSelector('#comment.active');
+  check(tables.responses.filter(r => !r.simulated).length === 1, 'response saved before the closing question');
+  await sp.fill('#commentText', 'It felt the most concrete.'); await sp.tap('#commentSend'); await sp.waitForSelector('#results.active');
+  check(tables.responses.find(r => !r.simulated).comment === 'It felt the most concrete.', 'comment attached to the saved response');
   check(Object.keys(tables.responses.find(r => !r.simulated).choices).length === 28, '28 choices recorded');
-  const realResp = tables.responses.find(r => !r.simulated); check(realResp.segment === 'Sales' && realResp.email === 'pat@example.com', 'segment and email saved with the response');
+  const realResp = tables.responses.find(r => !r.simulated); check(realResp.segments.join() === 'Sales,Under 50' && realResp.email === 'pat@example.com', 'segment answers and email saved with the response');
   check(Object.keys(realResp.times).length === 28 && Object.values(realResp.times).every(t => t > 0 && t < 60000), 'a time was recorded for every pair');
   check(!(await sp.locator('#againBtn').isVisible()), 'no retake for real participants');
   await sp.screenshot({ path: path.join(SHOTS, 'phone-done.png'), fullPage: true });
@@ -199,8 +213,10 @@ async function fakeAuth(route, req) {
 
   /* admin: refresh, export, remove simulated, close, delete */
   await page.click('#refreshBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('15 participants'));
+  await page.click('.tab[data-v="v-comments"]'); check(await page.locator('#comments li').count() === 1 && (await page.locator('#comments .said').textContent()) === 'It felt the most concrete.', 'comments tab lists the comment');
+  await page.screenshot({ path: path.join(SHOTS, 'admin-v-comments.png'), fullPage: true });
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportBtn')]);
-  const csv = fs.readFileSync(await dl.path(), 'utf8'); check(csv.split('\n').length === 1 + 15 * 28 && csv.includes('"Sales","pat@example.com"') && csv.split('\n')[0].endsWith('winner,seconds'), 'csv has one row per pair per participant, with segment, email and seconds');
+  const csv = fs.readFileSync(await dl.path(), 'utf8'); check(csv.split('\n').length === 1 + 15 * 28 && csv.includes('"Sales","Under 50","pat@example.com","It felt the most concrete."') && csv.split('\n')[0].startsWith('participant,submitted,"Which best describes you?","Company size",email,comment'), 'csv has a column per segment question, email, comment and seconds');
   await page.click('#unsimBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('1 participant,'));
   check(await page.locator('#unsimBtn').isDisabled(), 'remove simulated');
   await page.click('#closeBtn'); await page.waitForFunction(() => document.getElementById('statusPill').textContent === 'Closed');

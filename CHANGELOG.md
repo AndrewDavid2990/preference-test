@@ -2,6 +2,12 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: several segment questions and a closing question
+
+- A test can ask up to four segment questions, each with its own answers. Results get one dropdown per question and they combine. The client summary shows a "By segment" table per question. The CSV has a column per question.
+- A closing open text question after the last pair, prefilled with "Your top rated message was {top choice}. What made you choose that message?", where {top choice} is that participant's own number one. Optional for the participant; edit or clear it per test. Choices are saved before it is asked. Answers appear on a new Comments tab, in the summary under "In their words", and in the CSV.
+- Database: `supabase/006-segments-and-comment.sql`. The earlier single segment question was carried over automatically.
+
 ## 2026-11-01: timing as a junk signal
 
 - The survey records how long each pair took. The Consistency tab shows each participant's median seconds per pair and flags "Rushed" under 1.5 seconds; "Hide all flagged" includes them. The client summary mentions rushed participants under things to watch. CSV gets `median_seconds` and a per pair `seconds` column. Simulated random clickers are now fast, so the flag can be seen working.

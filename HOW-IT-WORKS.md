@@ -28,7 +28,7 @@ Participant's phone or laptop          Your laptop
 ## What happens when you create a test
 
 1. You sign in. The browser sends your email and password to Supabase's login service and gets back a **token**, a long string that proves who you are for about an hour (it is renewed automatically while the tab is open). The token is kept in your browser's local storage so you stay signed in between visits. Change password sends a new password to the same service using that token.
-2. You fill in a name (private to you), an optional scenario, the question, up to 8 messages, and optionally a segment question with its answers and whether to ask for an email. Click Create test and the browser sends one row to the `tests` table: `{ name, scenario, question, messages: ["...", "..."], segment_question, segment_options: ["...", "..."], ask_email, closed: false }`. Supabase gives it an id, a random string like `312c6449-f645-40e8-9021-0009b993ee72`.
+2. You fill in a name (private to you), an optional scenario, the question, up to 8 messages, optionally up to four segment questions with their answers, whether to ask for an email, and the closing question. Click Create test and the browser sends one row to the `tests` table: `{ name, scenario, question, messages: ["...", "..."], segments: [{ question, options: ["...", "..."] }], ask_email, comment_prompt, closed: false }`. Supabase gives it an id, a random string like `312c6449-f645-40e8-9021-0009b993ee72`.
 3. The results page opens with a participant link that is just `survey.html?t=` plus that id. The Preview button opens the same link with `&preview` added, which tells the survey page to save nothing: no response row, no browser memory.
 
 Messages are stored as a list and every response refers to them by position (message 0, message 1, and so on). That is why messages cannot be edited after creation: changing the list would silently change what old responses mean.
@@ -37,16 +37,17 @@ Messages are stored as a list and every response refers to them by position (mes
 
 1. Their browser loads `survey.html`, reads the id from the link, and fetches that one row from `tests`. No login is needed; the database rules allow anyone to read tests.
 2. If the test is closed they see a closed message. Otherwise they see a generic welcome ("You have been invited to a quick survey", never the test name), the scenario if there is one, a time estimate (about four seconds per pair), and a Start button.
-3. If the test asks about the participant, one short screen follows: the segment question as a list to pick from, and the email field if enabled. Their answers travel with their response. The question you set is then shown above every pair.
+3. If the test asks about the participant, one short screen follows: each segment question as a list to pick from, and the email field if enabled. Their answers travel with their response. The question you set is then shown above every pair.
 4. On Start, the browser builds every pair of messages (28 pairs for 8 messages), shuffles the order, and randomly decides which message goes left and which goes right for each pair. This is done fresh for every participant so position bias averages out.
 5. Each click records the winner for that pair, and how many milliseconds passed since the pair appeared, then moves on. Back steps to the previous pair with the earlier pick highlighted, and a new click replaces it. Answers live in an object like `{ "0-3": 3, "1-2": 1, "0-1": null }`. The key is the two message positions (smaller first), the value is the winning position, and `null` means they skipped. After every click this object is saved to the participant's local storage, so a refresh or a dropped connection picks up where they left off.
-6. On the last pair, the whole object is sent as one row to the `responses` table together with the test id, the segment they picked and the email they typed. The database rules allow anyone to add a response, but not to read or delete them. (One subtlety: Supabase normally echoes a saved row back, and echoing counts as reading, so this one save asks for no echo.)
-7. They see their own personal ranking (wins per message) as a thank you. A flag in their local storage remembers they finished, so reopening the link shows that ranking again instead of a fresh survey. "Take it again" clears the flag and adds a second response; it exists for testing, not for participants.
+6. On the last pair, the whole object is sent as one row to the `responses` table together with the test id, their segment answers and the email they typed. The browser picks the row's id itself (a random uuid) so it can refer to it in the next step.
+7. If the test has a closing question, it appears now with their own number one message filled in. Sending it calls one small database function, `add_comment`, which may only fill an empty comment on a row whose id the caller knows. Participants still cannot read, change or delete responses. Skipping just moves on. The database rules allow anyone to add a response, but not to read or delete them. (One subtlety: Supabase normally echoes a saved row back, and echoing counts as reading, so this one save asks for no echo.)
+8. They see their own personal ranking (wins per message) as a thank you. A flag in their local storage remembers they finished, so reopening the link shows that ranking again instead of a fresh survey. "Take it again" clears the flag and adds a second response; it exists for testing, not for participants.
 
 ## What happens when you open results
 
 1. The admin page fetches the test row and every response row for it, using your login token. Without a valid token the database returns nothing for responses.
-2. If the test has segments, a dropdown next to Refresh narrows every tab, and the client summary, to one group. "No answer" covers participants who did not pick one (for example, responses from before segments were added).
+2. If the test has segment questions, there is one dropdown per question next to Refresh. Set one or several; every tab and the client summary narrow to participants matching all of them. "No answer" covers participants who did not pick one (for example, responses from before segments were added). The Comments tab lists closing question answers for the included participants, each with that person's top choice.
 3. Everything on the six tabs is calculated in your browser from those rows, in `analysis.js`. Nothing is stored. Refresh results simply fetches again and recalculates.
 4. Client summary builds a complete web page as text in your browser (numbers from the same maths as the tabs, the logo and styles inlined) and opens it in a new tab. Save as PDF uses the browser's print; Download saves that page as a single file. Nothing about the summary is stored anywhere; reopen it any time from the results page.
 5. Hiding a participant on the Consistency tab is remembered in your browser only (local storage keyed by test id). The response stays in the database; it is just left out of the maths on your machine. Another admin on another laptop would not see your hidden choices. Deleting a participant removes the row from the database for everyone.
@@ -66,7 +67,7 @@ Messages are stored as a list and every response refers to them by position (mes
 - The **admin login** is Supabase's built in email and password auth. Being signed in is not enough on its own: the database rules also check that the signed in email is in a small `admins` table. So even if a stranger created an account, they would see nothing. There are no roles beyond that; every listed admin has full access.
 - The **service role key** (also in the Supabase dashboard) bypasses every rule. It is never used by this tool and should never be put in the code or shared.
 - Participant links are unguessable (random ids) but not secret: anyone with the link can respond, as many times as they clear their browser storage. That is acceptable for headline tests sent to a known list.
-- A response is a test id, a set of choices, a timestamp, and, if the test asks, a segment and an email address. Emails are only readable with an admin login. Do not ask for emails on tests where you do not need them.
+- A response is a test id, a set of choices with timings, a timestamp, and, if the test asks, segment answers, an email address and a closing comment. Emails are only readable with an admin login. Do not ask for emails on tests where you do not need them.
 
 ## Files
 
@@ -85,6 +86,7 @@ Messages are stored as a list and every response refers to them by position (mes
 | `supabase/003-scenario-question.sql` | Adds the scenario and question columns to tests. |
 | `supabase/004-participant-details.sql` | Adds the segment and email settings to tests and the answers to responses. |
 | `supabase/005-timing.sql` | Adds the per pair timings to responses. |
+| `supabase/006-segments-and-comment.sql` | Several segment questions per test, the closing question, and the `add_comment` function. |
 | `favicon.svg` | The little icon in the browser tab. |
 | `tested.svg`, `tested-reversed.svg` | The Tested logo lockup, copied from the brand guide in the `tested` repo (red for light backgrounds, paper for dark). |
 | `test/smoke.js` | End to end check of both pages against a fake database. |
