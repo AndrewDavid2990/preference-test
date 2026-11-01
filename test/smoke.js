@@ -109,6 +109,10 @@ async function fakeAuth(route, req) {
   check(test.segments.length === 2 && test.segments[0].options.join() === 'Founder,Marketer,Sales' && test.segments[1].question === 'Company size' && test.ask_email === 'optional', 'two segment questions saved, the incomplete one dropped');
   check(test.comment_prompt.startsWith('Your top rated'), 'closing question saved');
   check((await page.locator('#briefQuestion').textContent()).includes('Segment: Which best') && (await page.locator('#segmentFilters select').count()) === 2, 'results page shows both segment questions with a filter each');
+  await page.click('#editClosing'); await page.fill('#closingInput', 'Why did {top choice} win for you?'); await page.click('#closingForm button[type="submit"]');
+  await page.waitForFunction(() => document.getElementById('closingText').textContent.includes('Why did'));
+  check(tables.tests[0].comment_prompt === 'Why did {top choice} win for you?', 'closing question edited on an existing test');
+  await page.click('#editClosing'); await page.click('#cancelClosing'); check(await page.locator('#closingForm').isHidden(), 'edit can be cancelled');
   check((await page.locator('#briefQuestion').textContent()).includes('book a call'), 'results page shows the question');
   check((await page.locator('#gRank .empty').count()) === 1, 'empty results state');
   const shareUrl = await page.inputValue('#shareUrl'); check(shareUrl === base + 'survey.html?t=' + test.id, 'share url');
@@ -168,7 +172,7 @@ async function fakeAuth(route, req) {
   check((await pv.locator('#question').textContent()).startsWith('Which headline'), 'custom question above pairs');
   for (let i = 0; i < 28; i++) { await pv.click('#optA'); await pv.waitForTimeout(220); }
   await pv.waitForSelector('#comment.active');
-  check(/^Your top rated message was ".+"\. What made you choose that message\?$/.test(await pv.locator('#commentPrompt').textContent()), 'closing question with top choice filled in: ' + await pv.locator('#commentPrompt').textContent());
+  check(/^Why did ".+" win for you\?$/.test(await pv.locator('#commentPrompt').textContent()), 'closing question with top choice filled in: ' + await pv.locator('#commentPrompt').textContent());
   await pv.screenshot({ path: path.join(SHOTS, 'comment.png'), fullPage: true });
   await pv.click('#commentSkip'); await pv.waitForSelector('#results.active');
   check(tables.responses.length === 14, 'preview saved nothing');

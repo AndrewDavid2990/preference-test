@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <div class="wrap">
@@ -138,6 +138,15 @@
     <div class="brief" id="brief">
       <p id="briefScenario"></p>
       <p id="briefQuestion"></p>
+      <p id="briefClosing"><span id="closingText"></span> <button class="link" id="editClosing" type="button">Edit</button></p>
+      <form id="closingForm" style="display:none">
+        <textarea class="text" id="closingInput" rows="2" maxlength="300" style="margin:8px 0 10px"></textarea>
+        <div class="row">
+          <button class="btn primary" type="submit">Save</button>
+          <button class="link" type="button" id="cancelClosing">Cancel</button>
+          <span class="hint">{top choice} becomes the participant's own number one. Clear it to stop asking. Applies to participants from now on.</span>
+        </div>
+      </form>
     </div>
 
     <label class="field">Participant link</label>
@@ -214,11 +223,11 @@
 
 </div>
 
-<script src="config.js?v=7"></script>
-<script src="auth.js?v=7"></script>
-<script src="db.js?v=7"></script>
-<script src="analysis.js?v=7"></script>
-<script src="summary.js?v=7"></script>
+<script src="config.js?v=8"></script>
+<script src="auth.js?v=8"></script>
+<script src="db.js?v=8"></script>
+<script src="analysis.js?v=8"></script>
+<script src="summary.js?v=8"></script>
 <script>
   const MAX = 8;
   const sample = [
@@ -380,8 +389,8 @@
     $('briefScenario').style.display = test.scenario ? '' : 'none';
     test.segments = test.segments || [];
     $('briefQuestion').textContent = 'Question: ' + (test.question || 'Which message do you prefer?')
-      + test.segments.map(sq => ' · Segment: ' + sq.question).join('') + (test.ask_email && test.ask_email !== 'off' ? ' · Email ' + test.ask_email : '')
-      + (test.comment_prompt ? ' · Closing question: ' + test.comment_prompt : '');
+      + test.segments.map(sq => ' · Segment: ' + sq.question).join('') + (test.ask_email && test.ask_email !== 'off' ? ' · Email ' + test.ask_email : '');
+    renderClosing();
     const sf = $('segmentFilters'); sf.innerHTML = '';
     test.segments.forEach((sq, qi) => {
       const sel = document.createElement('select'); sel.className = 'btn'; sel.title = sq.question; sel.dataset.q = qi;
@@ -393,6 +402,23 @@
     await reloadResponses();
     show('group');
   }
+  /* the closing question can be changed on an existing test; it only affects participants from then on */
+  function renderClosing() {
+    $('closingText').textContent = test.comment_prompt ? 'Closing question: ' + test.comment_prompt : 'No closing question.';
+    $('closingForm').style.display = 'none'; $('briefClosing').style.display = '';
+  }
+  $('editClosing').addEventListener('click', () => {
+    $('closingInput').value = test.comment_prompt || '';
+    $('briefClosing').style.display = 'none'; $('closingForm').style.display = ''; $('closingInput').focus();
+  });
+  $('cancelClosing').addEventListener('click', renderClosing);
+  $('closingForm').addEventListener('submit', async e => {
+    e.preventDefault(); clearError();
+    const comment_prompt = $('closingInput').value.trim();
+    try { await db.updateTest(test.id, { comment_prompt }); test.comment_prompt = comment_prompt; renderClosing(); renderComments(); }
+    catch (err) { showError(err); }
+  });
+
   async function reloadResponses() {
     const rows = await db.listResponses(test.id);
     const hidden = loadHidden();

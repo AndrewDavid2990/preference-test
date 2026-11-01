@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: edit the closing question
+
+- The closing question can be changed, or cleared, on an existing test from the results page. Affects participants from then on; earlier comments keep their wording in the CSV only by context.
+
 ## 2026-11-01: several segment questions and a closing question
 
 - A test can ask up to four segment questions, each with its own answers. Results get one dropdown per question and they combine. The client summary shows a "By segment" table per question. The CSV has a column per question.
