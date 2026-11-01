@@ -1,7 +1,8 @@
 /* Shared styles for the admin page (index.html) and the participant page (survey.html).
    Follows the Tested visual identity: white canvas, Ink text, Montserrat headlines (the web
    fallback for Gotham), Poppins for everything else, 0 to 4px corners, no shadows, no decoration.
-   Brand red is used only for the wordmark, one focal element per screen, and data visuals. */
+   Brand red is used only for the wordmark, the picked card, the scenario panel, and data visuals.
+   It is never a "good" or "bad" signal: verdicts use Ink (strong) or light gray (soft). */
 
 :root {
   --bg: #ffffff;        /* canvas */
@@ -119,7 +120,7 @@ input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2p
 .rank li:first-child { border-top: 0; }
 @media (max-width: 520px) { .rank li { grid-template-columns: 30px 1fr; } .rank .stat { grid-column: 2; } }
 .rank .pos { font-family: var(--font-display); font-weight: 700; color: var(--muted); }
-.rank li:first-child .pos { color: var(--red); }
+.rank li:first-child .pos { color: var(--ink); }
 .rank .text { font-weight: 500; color: var(--ink); }
 .rank .stat { font-size: 13px; color: var(--muted); }
 .rank li.empty { display: block; text-align: center; padding: 28px; color: var(--muted); }
@@ -140,7 +141,7 @@ input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2p
 
 /* verdicts and labels: typography, not colored boxes */
 .badge { display: block; padding: 16px 18px; background: var(--panel); color: var(--ink); font-size: 15px; line-height: 1.5; margin: 8px 0 14px; max-width: 64ch; }
-.badge.good { border-left: 6px solid var(--red); }
+.badge.good { border-left: 6px solid var(--ink); }
 .badge.warn { border-left: 6px solid var(--line); color: var(--body); }
 .pill { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); vertical-align: middle; }
 .pill.warn { color: var(--ink); }

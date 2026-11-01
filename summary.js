@@ -89,7 +89,7 @@ const summary = {
   .meta { color: var(--muted); margin: 0 0 22px; }
   .brief { background: var(--panel); padding: 14px 18px; margin: 0 0 8px; }
   .brief p { margin: 0 0 4px; } .brief p:last-child { margin: 0; }
-  .verdict { border-top: 6px solid var(--red); background: var(--panel); padding: 20px 22px; margin: 26px 0 0; }
+  .verdict { border-top: 6px solid var(--ink); background: var(--panel); padding: 20px 22px; margin: 26px 0 0; }
   .verdict.soft { border-top-color: var(--line); }
   .verdict h2 { margin: 0 0 6px; font-size: 22px; }
   .verdict p { margin: 0; color: var(--ink); font-size: 15px; }
@@ -99,7 +99,7 @@ const summary = {
   .rank td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: top; color: var(--ink); }
   .rank tr:first-child td { border-top: 0; }
   .rank .pos { font-family: "Montserrat", sans-serif; font-weight: 700; color: var(--muted); width: 36px; }
-  .rank tr:first-child .pos { color: var(--red); }
+  .rank tr:first-child .pos { color: var(--ink); }
   .rank .msg { font-weight: 500; }
   .rank .num { width: 150px; font-weight: 600; white-space: nowrap; }
   .meter { height: 6px; background: var(--line); margin-top: 6px; width: 120px; } .meter div { height: 100%; background: var(--red); }

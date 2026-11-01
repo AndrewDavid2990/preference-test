@@ -4,6 +4,7 @@ Newest first. Dates are when the change went live on `main`.
 
 ## 2026-11-01: client summary
 
+- Red is no longer used as a "good" signal. Verdict panels (winner check tabs, summary) use an Ink bar when the news is strong and a light gray bar when it is soft; the #1 rank is Ink. Red stays for the wordmark, the picked card, the scenario panel and data visuals only.
 - **Client summary** button on the results page. Opens a one page branded write up in a new tab: plain language verdict (clear winner, likely winner, top two close, or no outright winner), ranking with win rate and strength, head to head grid, things to watch, and how the test worked. Save as PDF or Download as a standalone page.
 - The results tabs and the summary now share one calculation (`analysis.groupStats`), so they can never disagree.
 - Form field labels are plain sentence case instead of small uppercase captions.
