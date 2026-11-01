@@ -2,6 +2,13 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: Tested branding
+
+- Both pages now follow the Tested visual identity: white canvas, Ink text and buttons, Montserrat headlines (the web stand in for Gotham) with Poppins for everything else, square corners, no shadows, no blue. The Tested wordmark sits at the top of every screen (reversed version in dark mode).
+- Brand red is reserved for the wordmark, one focal element per screen (the bar above the scenario, the picked card, the #1 rank, the "clean winner" verdict) and the data visuals (meters, head to head shading, strength bands, histograms).
+- Status labels (Open, Closed, Consistent, Check this one) are typographic captions instead of colored pills. Verdict panels are off-white with a red bar only when the news is good.
+- Hover highlights are now mouse only, so a tapped card on a phone no longer stays highlighted.
+
 ## 2026-11-01: beta readiness
 
 - Each test now has an optional **scenario** (framing shown before the first pair) and an editable **question** (shown above every pair). Stored as two new columns (`supabase/003-scenario-question.sql`).

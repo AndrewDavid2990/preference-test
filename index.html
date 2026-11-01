@@ -6,7 +6,7 @@
 <title>Preference tests</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,7 +17,10 @@
        index.html?new        create a test
        index.html?test=ID    results for one test -->
 
-  <div class="who" id="who"><span id="whoEmail"></span> <a class="link" href="?password">Change password</a> <button class="link" id="signOutBtn" type="button">Sign out</button></div>
+  <header class="brand">
+    <a href="./" aria-label="All tests"><img class="logo-light" src="tested.svg" alt="Tested" width="328" height="76"><img class="logo-dark" src="tested-reversed.svg" alt="Tested" width="328" height="76"></a>
+    <div class="who" id="who"><span id="whoEmail"></span> <a class="link" href="?password">Change password</a> <button class="link" id="signOutBtn" type="button">Sign out</button></div>
+  </header>
   <div class="alert" id="alert"></div>
 
   <section id="notconfigured" class="screen">
@@ -143,11 +146,11 @@
     <div class="view" id="v-h2h">
       <p class="note">Share of participants who picked the row message over the column message. Look for a top message that loses to one specific rival.</p>
       <div class="scroll"><table id="h2h"></table></div>
-      <p class="legend">Darker blue means the row message won that matchup more often. Based only on pairs that were not skipped.</p>
+      <p class="legend">Deeper red means the row message won that matchup more often. Based only on pairs that were not skipped.</p>
     </div>
 
     <div class="view" id="v-bt">
-      <p class="note">Bradley-Terry strength scores, shown as each message's chance of beating an average message in this set. The band is a 90% interval from resampling participants: overlapping bands mean the messages are not clearly separated.</p>
+      <p class="note">Bradley-Terry strength scores, shown as each message's chance of beating an average message in this set. The pale band is a 90% interval from resampling participants: overlapping bands mean the messages are not clearly separated.</p>
       <ol class="rank" id="bt"></ol>
     </div>
 
@@ -409,7 +412,9 @@
           td.textContent = N[i][j] ? pct(r) : '';
           td.title = M[i][j] + ' of ' + N[i][j];
           const a = Math.abs(r - 0.5) * 2;
-          td.style.background = r >= 0.5 ? 'color-mix(in srgb, var(--accent) ' + Math.round(a * 60) + '%, var(--surface))' : 'color-mix(in srgb, var(--warn) ' + Math.round(a * 35) + '%, var(--surface))';
+          // wins shade towards brand red; losses are the mirror of another cell, so they stay quiet
+          td.style.background = r >= 0.5 ? 'color-mix(in srgb, var(--red) ' + Math.round(a * 55) + '%, var(--surface))' : 'var(--panel)';
+          if (r < 0.5) td.style.color = 'var(--muted)';
         }
         tr.appendChild(td);
       });

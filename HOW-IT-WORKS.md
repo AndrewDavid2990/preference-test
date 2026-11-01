@@ -71,7 +71,7 @@ Messages are stored as a list and every response refers to them by position (mes
 |---|---|
 | `index.html` | Admin page: sign in, tests list, create, results, export. All its own logic is inline at the bottom. |
 | `survey.html` | Participant page. Its own logic is inline at the bottom. |
-| `style.css` | Shared styles. Colours are CSS variables on `:root` with a dark mode override. |
+| `style.css` | Shared styles, following the Tested visual identity. Colours are CSS variables on `:root` with a dark mode override. |
 | `analysis.js` | All statistics, pure functions. Used by both pages. |
 | `db.js` | Every database read and write. Adds the login token when there is one. |
 | `auth.js` | Sign in, sign out, change password, token storage and renewal. Admin page only. |
@@ -80,6 +80,7 @@ Messages are stored as a list and every response refers to them by position (mes
 | `supabase/002-login.sql` | Adds the `admins` table and makes the admin rules require a listed, signed in email. |
 | `supabase/003-scenario-question.sql` | Adds the scenario and question columns to tests. |
 | `favicon.svg` | The little icon in the browser tab. |
+| `tested.svg`, `tested-reversed.svg` | The Tested logo lockup, copied from the brand guide in the `tested` repo (red for light backgrounds, paper for dark). |
 | `test/smoke.js` | End to end check of both pages against a fake database. |
 | `.github/workflows/keepalive.yml` | Scheduled job that stops the free Supabase project from pausing. |
 | `README.md` | Setup and day to day use. |
