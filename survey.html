@@ -12,7 +12,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <div class="wrap">
@@ -75,9 +75,9 @@
 
 </div>
 
-<script src="config.js?v=5"></script>
-<script src="db.js?v=5"></script>
-<script src="analysis.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="db.js?v=6"></script>
+<script src="analysis.js?v=6"></script>
 <script>
   const $ = id => document.getElementById(id);
   const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0, 0); };
@@ -92,6 +92,7 @@
   const save = (k, v) => { if (preview) return; try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
   let test = null, messages = [], pairs = [], idx = 0, current = {}, locked = false;
+  let times = {}, shownAt = 0;   // milliseconds each pair took, from appearing on screen to the tap
   let about = { segment: '', email: '' };   // answers from the "about you" screen, saved with the response
 
   function message(title, body) { $('msgTitle').textContent = title; $('msgBody').textContent = body; show('message'); }
@@ -117,7 +118,7 @@
 
     const progress = load(progressKey);
     if (progress && progress.pairs.length === analysis.allPairs(messages.length).length) {
-      pairs = progress.pairs; idx = progress.idx; current = progress.current; about = progress.about || about;
+      pairs = progress.pairs; idx = progress.idx; current = progress.current; about = progress.about || about; times = progress.times || {};
       show('survey'); renderPair();
     } else {
       $('introScenario').textContent = test.scenario || '';
@@ -158,12 +159,12 @@
 
   function startSurvey() {
     pairs = analysis.randomPairOrder(messages.length);
-    idx = 0; current = {};
-    save(progressKey, { pairs, idx, current, about });
+    idx = 0; current = {}; times = {};
+    save(progressKey, { pairs, idx, current, about, times });
     show('survey'); renderPair();
   }
   function renderPair() {
-    locked = false;
+    locked = false; shownAt = Date.now();
     const [a, b] = pairs[idx];
     $('optA').querySelector('.txt').textContent = messages[a];
     $('optB').querySelector('.txt').textContent = messages[b];
@@ -179,18 +180,19 @@
     if (locked) return; locked = true;
     const [a, b] = pairs[idx];
     current[analysis.key(a, b)] = side === null ? null : (side === 0 ? a : b);
+    times[analysis.key(a, b)] = Date.now() - shownAt;
     if (side !== null) $(side === 0 ? 'optA' : 'optB').classList.add('picked');
     const delay = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180;
     setTimeout(() => {
       idx++;
-      save(progressKey, { pairs, idx, current, about });
+      save(progressKey, { pairs, idx, current, about, times });
       if (idx < pairs.length) renderPair(); else finish();
     }, delay);
   }
   $('optA').addEventListener('click', () => choose(0));
   $('optB').addEventListener('click', () => choose(1));
   $('skipBtn').addEventListener('click', () => choose(null));
-  $('backBtn').addEventListener('click', () => { if (locked || idx === 0) return; idx--; save(progressKey, { pairs, idx, current, about }); renderPair(); });
+  $('backBtn').addEventListener('click', () => { if (locked || idx === 0) return; idx--; save(progressKey, { pairs, idx, current, about, times }); renderPair(); });
   document.addEventListener('keydown', e => {
     if (!$('survey').classList.contains('active')) return;
     if (e.key === '1') choose(0); if (e.key === '2') choose(1);
@@ -199,7 +201,7 @@
   async function finish() {
     if (!preview) {
       try {
-        await db.addResponses([{ test_id: testId, choices: current, simulated: false, segment: about.segment, email: about.email }]);
+        await db.addResponses([{ test_id: testId, choices: current, times, simulated: false, segment: about.segment, email: about.email }]);
       } catch (e) {
         locked = false;
         return message('Could not save your answers', e.message + ' Please check your connection and reload this page; your answers are kept until then.');

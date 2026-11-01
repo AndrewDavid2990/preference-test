@@ -73,6 +73,8 @@ const summary = {
     const divisive = st.order.filter(i => st.spread[i].split);
     if (divisive.length) notes.push(`<li><strong>Divisive:</strong> ${divisive.map(i => `"${msg(i)}"`).join(", ")} ${divisive.length > 1 ? "were" : "was"} ranked near the top by some participants and near the bottom by others. Average scores hide that. Worth asking who loved it and who did not.</li>`);
     if (st.skipped) notes.push(`<li><strong>Skips:</strong> ${st.skipped} pair${st.skipped === 1 ? " was" : "s were"} skipped as "no preference". Skipped pairs are left out of the numbers.</li>`);
+    const rushed = parts.filter(p => analysis.junk(n, p).rushed).length;
+    if (rushed) notes.push(`<li><strong>Rushed:</strong> ${rushed} included participant${rushed === 1 ? "" : "s"} averaged under 1.5 seconds per pair, which is too fast to have read both messages. Consider excluding them.</li>`);
     if (hiddenCount) notes.push(`<li><strong>Excluded:</strong> ${hiddenCount} participant${hiddenCount === 1 ? "" : "s"} ${hiddenCount === 1 ? "was" : "were"} excluded for inconsistent answers (the pattern of random clicking).</li>`);
     if (simCount) notes.push(`<li><strong>Simulated data:</strong> ${simCount} of these participants are simulated. Remove them before sharing this with a client.</li>`);
     if (st.P < 10) notes.push(`<li><strong>Small sample:</strong> ${st.P} participant${st.P === 1 ? "" : "s"} is enough to spot a strong favourite but not to separate close messages. Treat gaps under about 10 points as noise.</li>`);

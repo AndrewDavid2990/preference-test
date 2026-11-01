@@ -46,7 +46,7 @@ async function fakeRest(route, req) {
   if (!isAdmin && method === 'POST' && wantRows) return deny();   // returning rows needs read permission
   let result;
   if (method === 'GET') { const sel = params.get('select'); result = filterRows(tables[table], params).map(r => { if (sel && sel !== '*') { const o = {}; sel.split(',').forEach(k => o[k] = r[k]); return o; } return r; }); }
-  else if (method === 'POST') { const rows = [].concat(body).map(b => ({ id: uuid(), closed: false, simulated: false, scenario: '', question: 'Which message do you prefer?', segment_question: '', segment_options: [], ask_email: 'off', segment: '', email: '', created_at: new Date(Date.now() + seq * 1000).toISOString(), ...b })); tables[table].push(...rows); result = rows; }
+  else if (method === 'POST') { const rows = [].concat(body).map(b => ({ id: uuid(), closed: false, simulated: false, scenario: '', question: 'Which message do you prefer?', segment_question: '', segment_options: [], ask_email: 'off', segment: '', email: '', times: {}, created_at: new Date(Date.now() + seq * 1000).toISOString(), ...b })); tables[table].push(...rows); result = rows; }
   else if (method === 'PATCH') { result = filterRows(tables[table], params); result.forEach(r => Object.assign(r, body)); }
   else if (method === 'DELETE') { const del = filterRows(tables[table], params); tables[table] = tables[table].filter(r => !del.includes(r)); if (table === 'tests') tables.responses = tables.responses.filter(r => !del.some(t => t.id === r.test_id)); result = del; }
   if (!wantRows && method !== 'GET') return route.fulfill({ status: method === 'POST' ? 201 : 204, body: '' });
@@ -114,6 +114,11 @@ async function fakeAuth(route, req) {
   }
   check(await page.locator('#consist li').count() === 15, 'consistency lists 15');
   check(tables.responses.every(r => ['Founder', 'Marketer', 'Sales'].includes(r.segment)), 'simulated participants carry a segment');
+  check(tables.responses.every(r => Object.keys(r.times).length === 28), 'simulated participants carry timings');
+  check((await page.locator('#consist li .small').first().textContent()).includes('s per pair'), 'consistency shows seconds per pair');
+  const rushedRows = await page.locator('#consist li .flag', { hasText: 'Rushed' }).count();
+  const rushedData = tables.responses.filter(r => { const v = Object.values(r.times).sort((a, b) => a - b); return v[14] < 1500; }).length;
+  check(rushedRows === rushedData, 'rushed flag matches the data (' + rushedRows + ' rushed)');
   await page.selectOption('#segmentFilter', 'Founder');
   const founders = tables.responses.filter(r => r.segment === 'Founder').length;
   check((await lead()).startsWith(founders + ' participant') && (await lead()).includes('in "Founder"'), 'segment filter narrows the views: ' + await lead());
@@ -185,6 +190,7 @@ async function fakeAuth(route, req) {
   check(tables.responses.filter(r => !r.simulated).length === 1, 'response saved');
   check(Object.keys(tables.responses.find(r => !r.simulated).choices).length === 28, '28 choices recorded');
   const realResp = tables.responses.find(r => !r.simulated); check(realResp.segment === 'Sales' && realResp.email === 'pat@example.com', 'segment and email saved with the response');
+  check(Object.keys(realResp.times).length === 28 && Object.values(realResp.times).every(t => t > 0 && t < 60000), 'a time was recorded for every pair');
   check(!(await sp.locator('#againBtn').isVisible()), 'no retake for real participants');
   await sp.screenshot({ path: path.join(SHOTS, 'phone-done.png'), fullPage: true });
   await sp.reload(); await sp.waitForSelector('#results.active');
@@ -194,7 +200,7 @@ async function fakeAuth(route, req) {
   /* admin: refresh, export, remove simulated, close, delete */
   await page.click('#refreshBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('15 participants'));
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportBtn')]);
-  const csv = fs.readFileSync(await dl.path(), 'utf8'); check(csv.split('\n').length === 1 + 15 * 28 && csv.includes('"Sales","pat@example.com"'), 'csv has one row per pair per participant, with segment and email');
+  const csv = fs.readFileSync(await dl.path(), 'utf8'); check(csv.split('\n').length === 1 + 15 * 28 && csv.includes('"Sales","pat@example.com"') && csv.split('\n')[0].endsWith('winner,seconds'), 'csv has one row per pair per participant, with segment, email and seconds');
   await page.click('#unsimBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('1 participant,'));
   check(await page.locator('#unsimBtn').isDisabled(), 'remove simulated');
   await page.click('#closeBtn'); await page.waitForFunction(() => document.getElementById('statusPill').textContent === 'Closed');

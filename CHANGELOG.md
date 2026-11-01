@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-01: timing as a junk signal
+
+- The survey records how long each pair took. The Consistency tab shows each participant's median seconds per pair and flags "Rushed" under 1.5 seconds; "Hide all flagged" includes them. The client summary mentions rushed participants under things to watch. CSV gets `median_seconds` and a per pair `seconds` column. Simulated random clickers are now fast, so the flag can be seen working.
+
 ## 2026-11-01: cache fix
 
 - Scripts and styles now carry a version number in their address so a freshly deployed page can never run with a stale cached script. This caused one failed "Create test" right after a deploy (an error about a null messages column); reloading fixed it.

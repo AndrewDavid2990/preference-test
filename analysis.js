@@ -55,6 +55,23 @@ const analysis = {
 
   cycleRate(n, choices) { const { cycles, triples } = this.cyclesOf(n, choices); return triples ? cycles / triples : 0; },
 
+  // Median seconds per pair from a response's times object ({ "i-j": milliseconds }). null when not recorded.
+  medianSeconds(times) {
+    const v = Object.values(times || {}).filter(x => typeof x === "number" && x > 0).sort((a, b) => a - b);
+    if (!v.length) return null;
+    const mid = Math.floor(v.length / 2);
+    return (v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2) / 1000;
+  },
+
+  // Junk signals for one participant. Flagged when more than 15% of triples are cycles or the
+  // median time per pair is under 1.5 seconds (too fast to have read two messages).
+  RUSHED_SECONDS: 1.5,
+  junk(n, pt) {
+    const rate = this.cycleRate(n, pt.choices), median = this.medianSeconds(pt.times);
+    const rushed = median !== null && median < this.RUSHED_SECONDS;
+    return { rate, median, rushed, flagged: rate > 0.15 || rushed };
+  },
+
   /* ---------- group ---------- */
 
   // M[i][j] = times i beat j. N[i][j] = times i and j were compared (skips excluded).
@@ -142,7 +159,8 @@ const analysis = {
   gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); },
 
   // Fake participants for exercising the group views. Message index 1 is made
-  // polarizing, about 1 in 12 participants click at random, and 2% of pairs are skipped.
+  // polarizing, about 1 in 12 participants click at random (and fast), and 2% of pairs are skipped.
+  // Returns { choices: [{ choices, times }], latent }.
   // Pass the same `latent` object back in to keep the hidden "true" strengths stable across calls.
   simulate(n, count, latent) {
     if (!latent || latent.length !== n) {
@@ -154,13 +172,14 @@ const analysis = {
       const random = Math.random() < 0.08;
       const side = Math.random() < 0.5 ? 1 : -1;
       const s = latent.map((v, i) => v + this.gauss() * 0.5 + (i === latent.split ? side * 1.8 : 0));
-      const choices = {};
+      const choices = {}, times = {};
       this.allPairs(n).forEach(([i, j]) => {
+        times[this.key(i, j)] = Math.round(random ? 400 + Math.random() * 700 : 1500 + Math.exp(this.gauss() * 0.5 + 7.3));
         if (Math.random() < 0.02) { choices[this.key(i, j)] = null; return; }
         const pi = random ? 0.5 : 1 / (1 + Math.exp(-(s[i] - s[j]) * 1.6));
         choices[this.key(i, j)] = Math.random() < pi ? i : j;
       });
-      out.push(choices);
+      out.push({ choices, times });
     }
     return { choices: out, latent };
   }

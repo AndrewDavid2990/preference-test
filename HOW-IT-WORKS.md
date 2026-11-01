@@ -39,7 +39,7 @@ Messages are stored as a list and every response refers to them by position (mes
 2. If the test is closed they see a closed message. Otherwise they see a generic welcome ("You have been invited to a quick survey", never the test name), the scenario if there is one, a time estimate (about four seconds per pair), and a Start button.
 3. If the test asks about the participant, one short screen follows: the segment question as a list to pick from, and the email field if enabled. Their answers travel with their response. The question you set is then shown above every pair.
 4. On Start, the browser builds every pair of messages (28 pairs for 8 messages), shuffles the order, and randomly decides which message goes left and which goes right for each pair. This is done fresh for every participant so position bias averages out.
-5. Each click records the winner for that pair and moves on. Back steps to the previous pair with the earlier pick highlighted, and a new click replaces it. Answers live in an object like `{ "0-3": 3, "1-2": 1, "0-1": null }`. The key is the two message positions (smaller first), the value is the winning position, and `null` means they skipped. After every click this object is saved to the participant's local storage, so a refresh or a dropped connection picks up where they left off.
+5. Each click records the winner for that pair, and how many milliseconds passed since the pair appeared, then moves on. Back steps to the previous pair with the earlier pick highlighted, and a new click replaces it. Answers live in an object like `{ "0-3": 3, "1-2": 1, "0-1": null }`. The key is the two message positions (smaller first), the value is the winning position, and `null` means they skipped. After every click this object is saved to the participant's local storage, so a refresh or a dropped connection picks up where they left off.
 6. On the last pair, the whole object is sent as one row to the `responses` table together with the test id, the segment they picked and the email they typed. The database rules allow anyone to add a response, but not to read or delete them. (One subtlety: Supabase normally echoes a saved row back, and echoing counts as reading, so this one save asks for no echo.)
 7. They see their own personal ranking (wins per message) as a thank you. A flag in their local storage remembers they finished, so reopening the link shows that ranking again instead of a fresh survey. "Take it again" clears the flag and adds a second response; it exists for testing, not for participants.
 
@@ -58,7 +58,7 @@ Messages are stored as a list and every response refers to them by position (mes
 - **Strength scores** fit a Bradley-Terry model, the standard way to turn pairwise comparisons into a single strength per item (it is what chess ratings are built on). The score shown is each message's chance of beating an average message in the set. The band around it comes from resampling participants 150 times and refitting, and only appears with 5 or more participants.
 - **Winner check** asks two things: does #1 beat every other message head to head (a Condorcet winner), and is #1 versus #2 a statistically clear gap or a coin flip (an exact binomial test on that one matchup).
 - **Polarization** looks at where each message landed in every participant's personal ranking. A message that is 1st for some and last for others has a wide spread and is flagged "split". Total wins alone would show it as average.
-- **Consistency** counts cycles per participant: cases where they said A beats B, B beats C, and C beats A. A few are normal. More than 15% of all triples is flagged, because that is what random clicking looks like.
+- **Consistency** counts cycles per participant: cases where they said A beats B, B beats C, and C beats A. A few are normal. More than 15% of all triples is flagged, because that is what random clicking looks like. It also shows the median time per pair; under 1.5 seconds is flagged as rushed, since reading two messages takes longer than that. Either signal alone is enough to flag someone, and "Hide all flagged" excludes both kinds.
 
 ## Security and access, honestly
 
@@ -84,6 +84,7 @@ Messages are stored as a list and every response refers to them by position (mes
 | `supabase/002-login.sql` | Adds the `admins` table and makes the admin rules require a listed, signed in email. |
 | `supabase/003-scenario-question.sql` | Adds the scenario and question columns to tests. |
 | `supabase/004-participant-details.sql` | Adds the segment and email settings to tests and the answers to responses. |
+| `supabase/005-timing.sql` | Adds the per pair timings to responses. |
 | `favicon.svg` | The little icon in the browser tab. |
 | `tested.svg`, `tested-reversed.svg` | The Tested logo lockup, copied from the brand guide in the `tested` repo (red for light backgrounds, paper for dark). |
 | `test/smoke.js` | End to end check of both pages against a fake database. |

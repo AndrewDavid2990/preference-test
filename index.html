@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <div class="wrap">
@@ -195,7 +195,7 @@
     </div>
 
     <div class="view" id="v-consist">
-      <p class="note">If a participant prefers A over B and B over C, they should prefer A over C. Each violation is a cycle. Lots of cycles means random clicking or messages too similar to judge. Hide a participant to drop them from every other view (remembered in this browser only). Delete removes their response for good.</p>
+      <p class="note">Two junk signals. Cycles: if a participant prefers A over B and B over C, they should prefer A over C; each violation is a cycle, and lots of them means random clicking or messages too similar to judge. Speed: the median time per pair, flagged as rushed under 1.5 seconds, which is too fast to have read two messages. Hide a participant to drop them from every other view (remembered in this browser only). Delete removes their response for good.</p>
       <div class="row" style="margin-bottom:14px">
         <button class="btn" id="hideFlagged">Hide all flagged</button>
         <button class="btn" id="includeAll">Include everyone</button>
@@ -206,11 +206,11 @@
 
 </div>
 
-<script src="config.js?v=5"></script>
-<script src="auth.js?v=5"></script>
-<script src="db.js?v=5"></script>
-<script src="analysis.js?v=5"></script>
-<script src="summary.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="auth.js?v=6"></script>
+<script src="db.js?v=6"></script>
+<script src="analysis.js?v=6"></script>
+<script src="summary.js?v=6"></script>
 <script>
   const MAX = 8;
   const sample = [
@@ -357,7 +357,7 @@
   async function reloadResponses() {
     const rows = await db.listResponses(test.id);
     const hidden = loadHidden();
-    participants = rows.map(r => ({ id: r.id, choices: r.choices, simulated: r.simulated, hidden: hidden.has(r.id), created_at: r.created_at, segment: r.segment || '', email: r.email || '' }));
+    participants = rows.map(r => ({ id: r.id, choices: r.choices, times: r.times || {}, simulated: r.simulated, hidden: hidden.has(r.id), created_at: r.created_at, segment: r.segment || '', email: r.email || '' }));
     renderStatus();
     rerenderKeepingTab();
   }
@@ -379,7 +379,7 @@
   $('simBtn').addEventListener('click', async () => {
     const sim = analysis.simulate(messages.length, 15, latent); latent = sim.latent;
     const opts = test.segment_options || [];
-    try { await db.addResponses(sim.choices.map(c => ({ test_id: test.id, choices: c, simulated: true, segment: opts.length ? opts[Math.floor(Math.random() * opts.length)] : '' }))); await reloadResponses(); } catch (e) { showError(e); }
+    try { await db.addResponses(sim.choices.map(c => ({ test_id: test.id, choices: c.choices, times: c.times, simulated: true, segment: opts.length ? opts[Math.floor(Math.random() * opts.length)] : '' }))); await reloadResponses(); } catch (e) { showError(e); }
   });
   $('unsimBtn').addEventListener('click', async () => {
     try { await db.deleteSimulated(test.id); await reloadResponses(); } catch (e) { showError(e); }
@@ -397,12 +397,12 @@
 
   function exportCsv() {
     const n = messages.length, q = s => '"' + String(s).replace(/"/g, '""') + '"';
-    const lines = [['participant', 'submitted', 'segment', 'email', 'simulated', 'included', 'cycle_rate', 'message_a', 'message_b', 'winner'].join(',')];
+    const lines = [['participant', 'submitted', 'segment', 'email', 'simulated', 'included', 'cycle_rate', 'median_seconds', 'message_a', 'message_b', 'winner', 'seconds'].join(',')];
     participants.forEach((pt, i) => {
-      const rate = analysis.cycleRate(n, pt.choices).toFixed(3);
+      const j = analysis.junk(n, pt), rate = j.rate.toFixed(3), med = j.median === null ? '' : j.median.toFixed(1);
       analysis.allPairs(n).forEach(([a, b]) => {
-        const k = pt.choices[analysis.key(a, b)];
-        lines.push([i + 1, q(pt.created_at), q(pt.segment), q(pt.email), pt.simulated ? 'yes' : 'no', pt.hidden ? 'no' : 'yes', rate, q(messages[a]), q(messages[b]), k === null || k === undefined ? 'skipped' : q(messages[k])].join(','));
+        const k = pt.choices[analysis.key(a, b)], ms = (pt.times || {})[analysis.key(a, b)];
+        lines.push([i + 1, q(pt.created_at), q(pt.segment), q(pt.email), pt.simulated ? 'yes' : 'no', pt.hidden ? 'no' : 'yes', rate, med, q(messages[a]), q(messages[b]), k === null || k === undefined ? 'skipped' : q(messages[k]), typeof ms === 'number' ? (ms / 1000).toFixed(1) : ''].join(','));
       });
     });
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
@@ -529,23 +529,23 @@
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.v === active));
     document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === active));
   }
-  $('hideFlagged').addEventListener('click', () => { participants.forEach(pt => { if (analysis.cycleRate(messages.length, pt.choices) > 0.15) pt.hidden = true; }); saveHidden(); rerenderKeepingTab(); });
+  $('hideFlagged').addEventListener('click', () => { participants.forEach(pt => { if (analysis.junk(messages.length, pt).flagged) pt.hidden = true; }); saveHidden(); rerenderKeepingTab(); });
   $('includeAll').addEventListener('click', () => { participants.forEach(pt => pt.hidden = false); saveHidden(); rerenderKeepingTab(); });
 
   function renderConsistency() {
     const cl = $('consist'); cl.innerHTML = '';
     participants.forEach((pt, q) => {
       const { cycles, triples } = analysis.cyclesOf(messages.length, pt.choices);
-      const rate = triples ? cycles / triples : 0;
+      const { rate, median, rushed, flagged } = analysis.junk(messages.length, pt);
       const li = document.createElement('li');
       if (pt.hidden) li.className = 'hidden';
       const skipped = Object.values(pt.choices).filter(v => v === null).length;
       li.innerHTML = '<span></span><span class="small"></span><span></span><span class="acts"><button class="btn" type="button"></button><button class="btn danger" type="button">Delete</button></span>';
       li.children[0].textContent = 'Participant ' + (q + 1) + (pt.simulated ? ' (simulated)' : '') + (pt.segment ? ' · ' + pt.segment : '') + (pt.email ? ' · ' + pt.email : '');
       li.children[0].title = fmtDate(pt.created_at);
-      li.children[1].textContent = cycles + ' cycle' + (cycles === 1 ? '' : 's') + ' in ' + triples + ' triples' + (skipped ? ', ' + skipped + ' skipped' : '');
-      li.children[2].textContent = rate > 0.15 ? 'Check this one' : rate > 0.07 ? 'Some noise' : 'Consistent';
-      li.children[2].className = rate > 0.15 ? 'flag' : 'ok';
+      li.children[1].textContent = cycles + ' cycle' + (cycles === 1 ? '' : 's') + ' in ' + triples + ' triples' + (skipped ? ', ' + skipped + ' skipped' : '') + (median === null ? '' : ', ' + median.toFixed(1) + 's per pair');
+      li.children[2].textContent = rushed && rate > 0.15 ? 'Rushed and inconsistent' : rushed ? 'Rushed' : rate > 0.15 ? 'Check this one' : rate > 0.07 ? 'Some noise' : 'Consistent';
+      li.children[2].className = flagged ? 'flag' : 'ok';
       const [hideBtn, delBtn] = li.children[3].children;
       hideBtn.textContent = pt.hidden ? 'Include' : 'Hide';
       hideBtn.addEventListener('click', () => { pt.hidden = !pt.hidden; saveHidden(); rerenderKeepingTab(); });

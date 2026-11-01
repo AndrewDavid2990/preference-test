@@ -23,6 +23,7 @@ Files:
 - `auth.js`: admin login via Supabase Auth REST (`/auth/v1/token`, grant types password and refresh_token; `PUT /auth/v1/user` to change password). Session kept in localStorage under `pt-session`; `auth.token()` refreshes when within 60s of expiry, with one shared in-flight refresh so parallel requests do not reuse a refresh token. Loaded by index.html only.
 - `config.js`: Supabase URL and anon key. Placeholders until the owner fills them in; pages show a setup notice when unconfigured.
 - `supabase/003-scenario-question.sql`: adds `scenario` (default '') and `question` (default 'Which message do you prefer?') to tests. Applied live.
+- `supabase/005-timing.sql`: adds `times` jsonb to responses. Applied live.
 - `supabase/004-participant-details.sql`: adds `ask_email` ('off' | 'optional' | 'required'), `segment_question`, `segment_options` (jsonb array) to tests and `segment`, `email` to responses. Applied live.
 - `favicon.svg`, `.github/workflows/keepalive.yml` (reads one row every 3 days with the public anon key so the free project does not pause; also runnable by hand from the Actions tab).
 - `test/smoke.js`: Playwright end to end test with a fake PostgREST and auth that mirror the real policies (anon: select tests, insert responses with return=minimal only; admin: everything). Run `node test/smoke.js` from the repo root before every push. Screenshots in `test/shots/` (gitignored).
@@ -31,7 +32,7 @@ Files:
 
 Data model:
 - `tests { id, name, scenario, question, messages: [string], segment_question, segment_options: [string], ask_email, closed, created_at }`. Messages are immutable after creation because responses refer to them by index. `name` is admin only; participants never see it.
-- `responses { id, test_id, choices: { "i-j": winnerIndex | null }, segment, email, simulated, created_at }`. One row per participant. Simulated participants get a random segment when the test has options. Key `"i-j"` always has i < j. `null` means skipped.
+- `responses { id, test_id, choices: { "i-j": winnerIndex | null }, times: { "i-j": ms }, segment, email, simulated, created_at }`. One row per participant. `times` is measured from renderPair to the tap, overwritten if they go back; older rows have `{}`. Simulated participants get a random segment when the test has options. Key `"i-j"` always has i < j. `null` means skipped.
 
 Browser-only state (localStorage): participant progress and "already completed" flag per test on the survey page; the set of hidden participant ids per test and the login session on the admin page.
 
@@ -42,7 +43,7 @@ Admin features: sign in and out, change password, tests list with response count
 - Cap at 8 messages so every participant sees every pair (28 max, about 2 minutes). Rejected a larger cap with random subsets because full round-robin gives a per-person ranking, lets you spot segments, and is easy to explain to clients. For more than 8 candidates, run two rounds (two groups of 8, then a final of the top 4 from each).
 - Total wins is the headline ranking. In a full round-robin it equals average rank, so it is fair. The other views exist because total wins hides ties, rivals, splits, and junk responses.
 - Participants can step back one pair at a time (Back link) and change an answer. Allowed because mis-taps on phones are common and an uncorrectable slip becomes junk data; showing the earlier pick keeps it a correction rather than re-deliberation.
-- Participants can be hidden from the Consistency view (individually, or "Hide all flagged"). Hidden participants drop out of every other view. Threshold for flagged: more than 15% of triples are cycles. 7 to 15% is labelled "Some noise" and kept.
+- Participants can be hidden from the Consistency view (individually, or "Hide all flagged"). Hidden participants drop out of every other view. Thresholds for flagged: more than 15% of triples are cycles, or a median under 1.5 seconds per pair. 7 to 15% cycles is labelled "Some noise" and kept. Timing is a signal, not an automatic exclusion; the owner decides.
 - Supabase over browser storage because participants answer on their own devices and results must collect in one place. Plain REST calls over the Supabase JS client so there is nothing to install and the code stays readable.
 - Login is Supabase email and password auth called with plain fetch, no SDK, for the same reason. Admin status is an `admins` table checked inside the policies rather than a dashboard toggle, so it is visible in SQL and does not depend on dashboard settings. No roles beyond listed or not. Forgotten passwords are reset from the dashboard (or via the connector) rather than a reset email flow, which would need a Site URL and a reset page.
 - Database changes are numbered SQL files in `supabase/`, applied through the Supabase connector (`execute_sql`; `apply_migration` triggers a confirmation prompt that times out, and `drop policy` counts as destructive, so prefer `alter policy`). Never rewrite an already applied file; add a new one. Accounts are created with `POST /auth/v1/signup` using the anon key and then confirmed with `update auth.users set email_confirmed_at = now()`; the signup endpoint is rate limited to one call per minute.
@@ -53,11 +54,11 @@ Admin features: sign in and out, change password, tests list with response count
 - Bradley-Terry: iterative MM fit, normalized to geometric mean 1, displayed as p/(p+1) = chance of beating an average message. 90% interval from 150 bootstrap resamples of participants, only when 5+ participants.
 - Winner check: Condorcet test (does #1 win a majority against every other message) and a two-sided exact binomial test on #1 vs #2 head to head.
 - Polarization: per message, histogram of rank positions across participants, mean, standard deviation, and a "split" flag when 30%+ rank it top two and 30%+ rank it bottom two.
-- Consistency: count intransitive triples (A>B, B>C, C>A) per participant.
+- Consistency: count intransitive triples (A>B, B>C, C>A) per participant, plus median seconds per pair (`analysis.medianSeconds`). `analysis.junk(n, pt)` combines them: flagged when cycle rate > 15% or median < `RUSHED_SECONDS` (1.5). Labels: "Rushed and inconsistent", "Rushed", "Check this one", "Some noise", "Consistent".
 
 ## Likely next steps
 
-- Optional: time per choice as another junk-response signal.
+- None queued. Wait for feedback from the first real test runs.
 
 ## Conventions
 
