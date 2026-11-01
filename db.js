@@ -15,7 +15,9 @@ const db = {
     return /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(CONFIG.SUPABASE_URL) && !/YOUR/.test(CONFIG.SUPABASE_ANON_KEY);
   },
 
-  async request(method, path, body) {
+  // returnRows: whether to ask Supabase for the affected rows back. Reading rows back needs read
+  // permission, which participants do not have on responses, so inserts there pass false.
+  async request(method, path, body, returnRows = true) {
     const userToken = typeof auth !== "undefined" ? await auth.token() : null;
     const res = await fetch(CONFIG.SUPABASE_URL + "/rest/v1/" + path, {
       method,
@@ -23,7 +25,7 @@ const db = {
         apikey: CONFIG.SUPABASE_ANON_KEY,
         Authorization: "Bearer " + (userToken || CONFIG.SUPABASE_ANON_KEY),
         "Content-Type": "application/json",
-        Prefer: "return=representation"
+        Prefer: returnRows ? "return=representation" : "return=minimal"
       },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
@@ -34,7 +36,7 @@ const db = {
       if (res.status === 401 || res.status === 403 || /row-level security/.test(detail)) detail = "You do not have permission to do that. " + detail;
       throw new Error("Database request failed (" + res.status + "). " + detail);
     }
-    return res.status === 204 ? null : res.json();
+    return res.status === 204 || res.status === 201 && !returnRows ? null : res.json();
   },
 
   /* tests */
@@ -47,6 +49,6 @@ const db = {
   /* responses */
   listResponses(testId) { return this.request("GET", "responses?select=*&order=created_at.asc&test_id=eq." + encodeURIComponent(testId)); },
   countResponses() { return this.request("GET", "responses?select=test_id"); },   // one tiny row per response, tallied by the caller
-  addResponses(rows) { return this.request("POST", "responses", rows); },         // rows: [{ test_id, choices, simulated }]
+  addResponses(rows) { return this.request("POST", "responses", rows, false); },  // rows: [{ test_id, choices, simulated }]
   deleteSimulated(testId) { return this.request("DELETE", "responses?simulated=eq.true&test_id=eq." + encodeURIComponent(testId)); }
 };

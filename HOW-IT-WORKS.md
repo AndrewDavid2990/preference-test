@@ -39,7 +39,7 @@ Messages are stored as a list and every response refers to them by position (mes
 2. If the test is closed they see a closed message. Otherwise they see an intro with the test name and a Start button.
 3. On Start, the browser builds every pair of messages (28 pairs for 8 messages), shuffles the order, and randomly decides which message goes left and which goes right for each pair. This is done fresh for every participant so position bias averages out.
 4. Each click records the winner for that pair in an object like `{ "0-3": 3, "1-2": 1, "0-1": null }`. The key is the two message positions (smaller first), the value is the winning position, and `null` means they skipped. After every click this object is saved to the participant's local storage, so a refresh or a dropped connection picks up where they left off.
-5. On the last pair, the whole object is sent as one row to the `responses` table together with the test id. The database rules allow anyone to add a response, but not to read or delete them.
+5. On the last pair, the whole object is sent as one row to the `responses` table together with the test id. The database rules allow anyone to add a response, but not to read or delete them. (One subtlety: Supabase normally echoes a saved row back, and echoing counts as reading, so this one save asks for no echo.)
 6. They see their own personal ranking (wins per message) as a thank you. A flag in their local storage remembers they finished, so reopening the link shows that ranking again instead of a fresh survey. "Take it again" clears the flag and adds a second response; it exists for testing, not for participants.
 
 ## What happens when you open results
