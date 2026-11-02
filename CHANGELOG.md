@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-02: sample size guidance
+
+- The client summary has a "How many participants it takes" section: a one line reading for this test's size, and a table of the chance of a clear winner by true top two split and sample size (15, 30, 40, 50, 100), from simulations of the tool's own rules.
+
 ## 2026-11-01: getting ready for beta
 
 - The smoke test now runs in GitHub on every push (`.github/workflows/test.yml`), with screenshots attached to each run, so a broken change cannot go live unnoticed.

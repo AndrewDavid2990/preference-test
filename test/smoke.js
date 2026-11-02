@@ -148,6 +148,7 @@ async function fakeAuth(route, req) {
   check((await sum.locator('body').innerText()).includes('simulated'), 'summary warns about simulated data');
   check(await sum.locator('.logo svg').count() === 1, 'summary carries the logo inline');
   check(await sum.locator('table.segs').count() === 2, 'summary has a by segment table per question');
+  check(await sum.locator('table.power td.seg').count() === 5 && (await sum.locator('body').innerText()).includes('How many participants it takes'), 'summary has the sample size guidance');
   await sum.screenshot({ path: path.join(SHOTS, 'summary.png'), fullPage: true });
   const [sdl] = await Promise.all([sum.waitForEvent('download'), sum.click('#dl')]);
   const shtml = fs.readFileSync(await sdl.path(), 'utf8');

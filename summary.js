@@ -80,6 +80,29 @@ const summary = {
         said.map(p => { const top = analysis.groupStats(n, [p]).order[0]; return `<li><span class="band">${msg(top)}${(p.segments || []).filter(Boolean).length ? " · " + esc(p.segments.filter(Boolean).join(", ")) : ""}</span><br>${esc(p.comment)}</li>`; }).join("") + "</ul>";
     }
 
+    /* sample size: how many people it takes to call a winner, from simulations of this tool's own rules
+       (8 messages, 80% target). Rows are the true preference split between the top two messages. */
+    const power = [
+      { split: "80 / 20", n: [54, 88, 91, 99, 100] },
+      { split: "75 / 25", n: [37, 73, 83, 89, 100] },
+      { split: "70 / 30", n: [21, 51, 62, 66, 89] },
+      { split: "65 / 35", n: [9, 29, 33, 39, 73] },
+      { split: "60 / 40", n: [8, 14, 21, 17, 36] }
+    ];
+    const sizes = [15, 30, 40, 50, 100];
+    const observed = tt.m ? Math.round(tt.k / tt.m * 100) : null;
+    let reading;
+    if (st.P < 15) reading = `With ${st.P} participant${st.P === 1 ? "" : "s"}, only a very strong favourite (about 80 / 20 or wider) gets confirmed. Treat this as directional and plan on 40 to 50 people for a decision.`;
+    else if (st.P < 30) reading = `With ${st.P} participants, a favourite preferred by about three in four people gets confirmed most of the time; anything closer usually reads as "top two are close". 40 to 50 people is the sweet spot for a decision.`;
+    else if (st.P < 75) reading = `With ${st.P} participants, a 75 / 25 favourite is confirmed nearly every time and a 70 / 30 favourite about two times in three. If the top two still read as close, they probably are close: more people rarely changes that.`;
+    else reading = `With ${st.P} participants, anything 65 / 35 or wider is confirmed most of the time. If the top two still read as close, treat them as equivalent on preference and decide on strategy or a live A/B test.`;
+    if (observed !== null && tt.verdict === "tie") reading += ` The observed split between #1 and #2 here is ${observed} / ${100 - observed}.`;
+    const sample = `<h2>How many participants it takes</h2>
+      <p class="method">${reading}</p>
+      <table class="rank power"><tr><th>True split, #1 vs #2</th>${sizes.map(s => `<th>${s} people</th>`).join("")}</tr>
+      ${power.map(r => `<tr><td class="seg">${r.split}</td>${r.n.map(v => `<td class="${v >= 80 ? "strong" : v >= 50 ? "mid" : ""}">${v}%</td>`).join("")}</tr>`).join("")}</table>
+      <p class="method">Chance that a test of this size declares a clear winner, when the real preference between the top two messages is as shown. From simulations of this tool's own rules. Fewer, stronger candidates stretch a sample further: cut obvious losers before the test, not after.</p>`;
+
     /* things to watch */
     const notes = [];
     const divisive = st.order.filter(i => st.spread[i].split);
@@ -135,6 +158,8 @@ const summary = {
   .band { font-size: 12px; font-weight: 400; color: var(--muted); }
   .tag { margin-left: 6px; }
   .segs td { font-size: 13px; } .segs .seg { font-weight: 600; width: 160px; }
+  .power td { text-align: center; color: var(--muted); } .power td.seg { text-align: left; color: var(--ink); width: 170px; }
+  .power td.mid { color: var(--ink); } .power td.strong { color: var(--ink); font-weight: 600; }
   .quotes { list-style: none; padding: 0; } .quotes li { padding: 10px 14px; border-left: 3px solid var(--line); margin-bottom: 10px; color: var(--ink); white-space: pre-wrap; }
   .grid { border: 1.5px solid var(--ink); width: auto; }
   .grid th, .grid td { padding: 7px 9px; border: 1px solid var(--line); text-align: center; white-space: nowrap; font-weight: 600; color: var(--ink); }
@@ -178,6 +203,8 @@ const summary = {
   ${comments}
 
   ${notes.length ? `<h2>Things to watch</h2><ul>${notes.join("")}</ul>` : ""}
+
+  ${sample}
 
   <h2>How the test worked</h2>
   <div class="method">
