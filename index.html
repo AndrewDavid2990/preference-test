@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 <div class="wrap">
@@ -156,6 +156,7 @@
       <button class="btn" id="copyBtn">Copy</button>
       <a class="btn" id="previewLink" target="_blank" rel="noopener">Preview</a>
       <a class="btn" id="editLink">Edit test</a>
+      <button class="btn" id="dupBtn" type="button">Duplicate</button>
     </div>
     <p class="small" style="margin:-10px 0 20px">Preview runs the survey without saving anything, so you can check it or show a client. Only send the participant link itself to real participants.</p>
 
@@ -225,11 +226,11 @@
 
 </div>
 
-<script src="config.js?v=15"></script>
-<script src="auth.js?v=15"></script>
-<script src="db.js?v=15"></script>
-<script src="analysis.js?v=15"></script>
-<script src="summary.js?v=15"></script>
+<script src="config.js?v=16"></script>
+<script src="auth.js?v=16"></script>
+<script src="db.js?v=16"></script>
+<script src="analysis.js?v=16"></script>
+<script src="summary.js?v=16"></script>
 <script>
   const MAX = 8;
   const sample = [
@@ -303,7 +304,10 @@
       meta.textContent = t.messages.length + ' messages, ' + (tally[t.id] || 0) + ' response' + (tally[t.id] === 1 ? '' : 's') + ', created ' + fmtDate(t.created_at);
       left.append(name, meta);
       const pill = document.createElement('span'); pill.className = 'pill' + (t.closed ? '' : ' warn'); pill.textContent = t.closed ? 'Closed' : 'Open';
-      a.append(left, pill); li.appendChild(a); ul.appendChild(li);
+      a.append(left, pill);
+      const dup = document.createElement('button'); dup.className = 'btn dup'; dup.type = 'button'; dup.textContent = 'Duplicate'; dup.title = 'Make a copy of this test';
+      dup.addEventListener('click', () => duplicateTest(t).catch(showError));
+      li.append(a, dup); ul.appendChild(li);
     });
     show('list');
   }
@@ -365,6 +369,16 @@
   updateSegHint();
 
   $('sampleBtn').addEventListener('click', () => { renderList(sample); if (!$('testName').value) $('testName').value = 'Sample headline test'; });
+
+  // A copy of a test: same messages and settings, no responses, named "... (copy)". Opens the copy's
+  // edit form so the messages can be adjusted before anyone sees it.
+  async function duplicateTest(t) {
+    const copy = await db.createTest({
+      name: t.name + ' (copy)', messages: t.messages, scenario: t.scenario || '', question: t.question || 'Which message do you prefer?',
+      segments: t.segments || [], ask_email: t.ask_email || 'off', comment_prompt: t.comment_prompt || ''
+    });
+    location.href = '?edit=' + copy.id;
+  }
 
   /* the same form edits an existing test. editingId is set by openEditor; messagesLocked when it has responses */
   let editingId = null, messagesLocked = false;
@@ -469,6 +483,7 @@
     setTimeout(() => $('copyBtn').textContent = 'Copy', 1500);
   });
   $('refreshBtn').addEventListener('click', () => { clearError(); reloadResponses().catch(showError); });
+  $('dupBtn').addEventListener('click', () => duplicateTest(test).catch(showError));
   $('closeBtn').addEventListener('click', async () => {
     try { await db.updateTest(test.id, { closed: !test.closed }); test.closed = !test.closed; renderStatus(); } catch (e) { showError(e); }
   });

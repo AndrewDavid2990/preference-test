@@ -40,7 +40,7 @@ Data model:
 
 Browser-only state (localStorage): participant progress and "already completed" flag per test on the survey page; the set of hidden participant ids per test and the login session on the admin page.
 
-Admin features: sign in and out, change password, tests list with response counts, create test (name, scenario, question, messages, up to 4 segment questions with options, email off/optional/required, closing question), participant link with copy, preview link, one segment filter per question (combined with AND), edit test (all fields; messages only while there are no responses), edit closing question in place, refresh, Comments tab, close/reopen, client summary (new tab, print or download), export CSV (one row per pair per participant), add 15 simulated participants (flagged `simulated`), remove simulated, hide or delete a single participant, delete test (cascades to responses).
+Admin features: sign in and out, change password, tests list with response counts, create test (name, scenario, question, messages, up to 4 segment questions with options, email off/optional/required, closing question), participant link with copy, preview link, one segment filter per question (combined with AND), edit test (all fields; messages only while there are no responses), duplicate (list and results page; `duplicateTest` creates "name (copy)" and opens `?edit=`), edit closing question in place, refresh, Comments tab, close/reopen, client summary (new tab, print or download), export CSV (one row per pair per participant), add 15 simulated participants (flagged `simulated`), remove simulated, hide or delete a single participant, delete test (cascades to responses).
 
 ## Product decisions already made
 

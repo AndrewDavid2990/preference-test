@@ -58,6 +58,7 @@ Until it is online, you can still open `index.html` directly from your computer 
 
 ## Good to know
 
+- **Duplicate** (on the tests list and on a results page) makes a copy with the same messages and settings and no responses, named "... (copy)", and opens it for editing.
 - **Edit test** on the results page changes the name, scenario, question, segment questions, email setting and closing question at any time; participants from then on see the new wording. The messages themselves lock once the test has responses, because each answer refers to messages by position. If the only responses are simulated, remove them to unlock.
 - The admin page needs a login, and only emails in the `admins` table get in. Anyone with a participant link can respond, and the link is unguessable but not secret, so send it to a known list.
 - Supabase free projects pause after about a week of no activity. A scheduled job in this repo (`.github/workflows/keepalive.yml`) reads one row every three days to prevent that. If the admin page ever cannot connect after a quiet spell, open the Supabase dashboard and click Restore project.

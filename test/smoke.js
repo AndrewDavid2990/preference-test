@@ -138,6 +138,14 @@ async function fakeAuth(route, req) {
   check(await page.locator('#msgLocked').isVisible() && (await page.locator('#msgLocked').textContent()).includes('simulated') && await page.locator('#msgList input').first().isDisabled() && await page.locator('#msgTools').isHidden(), 'messages lock once responses exist');
   await page.fill('#testScenario', 'Edited scenario after responses.\n\nSecond paragraph.'); await page.click('#createBtn'); await page.waitForSelector('#group.active');
   check(tables.tests[0].scenario === 'Edited scenario after responses.\n\nSecond paragraph.' && tables.tests[0].messages[7] === 'A brand new eighth message', 'other fields still editable, messages untouched');
+  await page.click('#dupBtn'); await page.waitForSelector('#setup.active');
+  const copy = tables.tests[tables.tests.length - 1];
+  check(tables.tests.length === 2 && copy.name === 'Sample headline test v2 (copy)' && copy.messages.join() === tables.tests[0].messages.join() && copy.segments.length === 2 && copy.ask_email === 'optional' && page.url().includes('?edit=' + copy.id) && await page.locator('#msgLocked').isHidden(), 'duplicate from results opens an unlocked copy');
+  await page.goto(base); await page.waitForSelector('#testList li');
+  check(await page.locator('#testList .dup').count() === 2, 'tests list has a duplicate button per test');
+  await page.locator('#testList .dup').last().click(); await page.waitForSelector('#setup.active');
+  check(tables.tests.length === 3 && tables.tests[2].name.endsWith('(copy)'), 'duplicate from the list');
+  await page.goto(base + '?test=' + tables.tests[0].id); await page.waitForSelector('#group.active'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('15 participants'));
   await page.click('.tab[data-v="v-consist"]');
   check(tables.responses.every(r => ['Founder', 'Marketer', 'Sales'].includes(r.segments[0]) && ['Under 50', '50 or more'].includes(r.segments[1])), 'simulated participants answer every segment question');
   check(tables.responses.every(r => Object.keys(r.times).length === 28), 'simulated participants carry timings');
@@ -252,10 +260,9 @@ async function fakeAuth(route, req) {
   await page.goto(base + '?password'); await page.waitForSelector('#password.active');
   await page.fill('#newPassword', 'newsecret123'); await page.fill('#newPassword2', 'newsecret123'); await page.click('#passwordBtn');
   await page.waitForFunction(() => document.getElementById('passwordHint').textContent === 'Saved.'); check(pwChanges[0] === 'newsecret123', 'password change sent');
-  await page.goto(base); await page.waitForSelector('#testList li a');
-  await page.click('#testList li a'); await page.waitForSelector('#group.active');
+  await page.goto(base + '?test=' + tables.tests[0].id); await page.waitForSelector('#group.active');
   page.once('dialog', d => d.accept()); await page.click('#deleteBtn'); await page.waitForSelector('#list.active');
-  check(tables.tests.length === 0 && tables.responses.length === 0, 'delete test cascades');
+  check(tables.tests.length === 2 && tables.responses.length === 0 && tables.tests.every(t => t.name.endsWith('(copy)')), 'delete test cascades, copies untouched');
   await page.click('#signOutBtn'); await page.waitForSelector('#login.active'); check(true, 'signed out');
 
   /* dark mode look */
