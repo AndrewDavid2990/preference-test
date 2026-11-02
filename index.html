@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <div class="wrap">
@@ -15,6 +15,7 @@
   <!-- This is the admin page: create tests, share the participant link, read results.
        index.html            list of tests
        index.html?new        create a test
+       index.html?edit=ID    change a test (messages lock once it has responses)
        index.html?test=ID    results for one test -->
 
   <header class="brand">
@@ -78,8 +79,8 @@
 
   <section id="setup" class="screen">
     <p class="crumb"><a href="./">All tests</a></p>
-    <h1>New preference test</h1>
-    <p class="lead">Enter 2 to 8 messages. Participants will see every pair (28 at most, about 2 minutes), pick one each time, and the results become a ranking. Messages cannot be edited once the test has responses, so check them now.</p>
+    <h1 id="setupTitle">New preference test</h1>
+    <p class="lead" id="setupLead">Enter 2 to 8 messages. Participants will see every pair (28 at most, about 2 minutes), pick one each time, and the results become a ranking. Everything can be changed later except the messages, which lock once the test has responses.</p>
 
     <label class="field" for="testName">Name</label>
     <input class="text" id="testName" type="text" maxlength="120" placeholder="Homepage headline, round 1">
@@ -94,14 +95,19 @@
     <p class="hint under">Shown above every pair.</p>
 
     <label class="field">Messages</label>
+    <p class="hint under" id="msgLocked" style="display:none;margin:-2px 0 10px"></p>
     <div class="msg-list" id="msgList"></div>
-    <div class="row" style="margin-bottom:28px">
+    <div class="row" style="margin-bottom:28px" id="msgTools">
       <button class="btn" id="addMsg">Add message</button>
       <span class="hint" id="countHint"></span>
       <button class="link" id="sampleBtn">Fill with sample headlines</button>
     </div>
-    <h3>About the participant</h3>
-    <p class="note">Optional. Asked once, after the welcome screen and before the first pair. Segments let you compare results between groups of people.</p>
+    <h3>After the last pair</h3>
+    <p class="note">All optional. Anything set here appears on one final screen after the last pair: the closing question, then the segment questions, then the email field. Segments let you compare results between groups of people.</p>
+
+    <label class="field" for="commentPrompt">Closing question</label>
+    <textarea class="text" id="commentPrompt" rows="2" maxlength="300">Your top rated message was {top choice}. What made you choose that message?</textarea>
+    <p class="hint under">Optional for participants, with a text box to answer. {top choice} becomes their own number one message. Leave blank to skip it.</p>
 
     <div id="segList"></div>
     <div class="row" style="margin:-6px 0 22px">
@@ -115,11 +121,6 @@
       <label><input type="radio" name="askEmail" value="optional"> Optional</label>
       <label><input type="radio" name="askEmail" value="required"> Required</label>
     </div>
-
-    <h3>After the last pair</h3>
-    <label class="field" for="commentPrompt">Closing question</label>
-    <textarea class="text" id="commentPrompt" rows="2" maxlength="300">Your top rated message was {top choice}. What made you choose that message?</textarea>
-    <p class="hint under">Optional for participants, with a text box to answer. {top choice} becomes their own number one message. Leave blank to skip it.</p>
 
     <div class="row" style="margin-top:28px">
       <button class="btn primary" id="createBtn">Create test</button>
@@ -154,6 +155,7 @@
       <input id="shareUrl" type="text" readonly>
       <button class="btn" id="copyBtn">Copy</button>
       <a class="btn" id="previewLink" target="_blank" rel="noopener">Preview</a>
+      <a class="btn" id="editLink">Edit test</a>
     </div>
     <p class="small" style="margin:-10px 0 20px">Preview runs the survey without saving anything, so you can check it or show a client. Only send the participant link itself to real participants.</p>
 
@@ -223,11 +225,11 @@
 
 </div>
 
-<script src="config.js?v=10"></script>
-<script src="auth.js?v=10"></script>
-<script src="db.js?v=10"></script>
-<script src="analysis.js?v=10"></script>
-<script src="summary.js?v=10"></script>
+<script src="config.js?v=12"></script>
+<script src="auth.js?v=12"></script>
+<script src="db.js?v=12"></script>
+<script src="analysis.js?v=12"></script>
+<script src="summary.js?v=12"></script>
 <script>
   const MAX = 8;
   const sample = [
@@ -264,6 +266,7 @@
       if (params.get('test')) await openTest(params.get('test'));
       else if (params.has('password')) { show('password'); $('newPassword').focus(); }
       else if (params.has('new')) { renderList(['', '']); show('setup'); $('testName').focus(); }
+      else if (params.get('edit')) await openEditor(params.get('edit'));
       else await renderTestList();
     } catch (e) { showError(e); }
   }
@@ -311,12 +314,12 @@
     values.forEach((v, i) => {
       const row = document.createElement('div'); row.className = 'msg-row';
       const input = document.createElement('input');
-      input.type = 'text'; input.value = v; input.placeholder = 'Message ' + (i + 1); input.maxLength = 200;
+      input.type = 'text'; input.value = v; input.placeholder = 'Message ' + (i + 1); input.maxLength = 200; input.disabled = messagesLocked;
       input.addEventListener('input', updateHints);
       const del = document.createElement('button');
       del.className = 'icon-btn'; del.type = 'button'; del.textContent = '×'; del.title = 'Remove';
       del.addEventListener('click', () => { row.remove(); updateHints(); });
-      row.append(input, del); list.appendChild(row);
+      row.append(input); if (!messagesLocked) row.appendChild(del); list.appendChild(row);
     });
     updateHints();
   }
@@ -362,14 +365,42 @@
   updateSegHint();
 
   $('sampleBtn').addEventListener('click', () => { renderList(sample); if (!$('testName').value) $('testName').value = 'Sample headline test'; });
+
+  /* the same form edits an existing test. editingId is set by openEditor; messagesLocked when it has responses */
+  let editingId = null, messagesLocked = false;
+  async function openEditor(id) {
+    const t = await db.getTest(id);
+    if (!t) throw new Error('That test does not exist. It may have been deleted.');
+    const responses = await db.listResponses(id);
+    editingId = id; messagesLocked = responses.length > 0;
+    $('setupTitle').textContent = 'Edit test'; document.title = 'Edit ' + t.name;
+    $('setupLead').textContent = messagesLocked
+      ? 'Change anything except the messages. Participants from now on see the new wording; earlier responses are unaffected.'
+      : 'Change anything. No one has responded yet, so the messages can still be edited.';
+    $('testName').value = t.name; $('testScenario').value = t.scenario || ''; $('testQuestion').value = t.question || 'Which message do you prefer?';
+    $('msgLocked').style.display = messagesLocked ? '' : 'none';
+    $('msgLocked').textContent = 'Locked: ' + responses.length + ' response' + (responses.length === 1 ? '' : 's') + ' refer' + (responses.length === 1 ? 's' : '') + ' to these messages by position.' + (responses.every(r => r.simulated) ? ' All of them are simulated: remove them on the results page to unlock.' : '');
+    $('msgTools').style.display = messagesLocked ? 'none' : '';
+    renderList(t.messages);
+    $('segList').innerHTML = ''; (t.segments || []).forEach(sq => addSegBlock(sq.question, sq.options)); updateSegHint();
+    document.querySelector('input[name="askEmail"][value="' + (t.ask_email || 'off') + '"]').checked = true;
+    $('commentPrompt').value = t.comment_prompt || '';
+    $('createBtn').textContent = 'Save changes';
+    show('setup');
+  }
+
   $('createBtn').addEventListener('click', async () => {
     const name = $('testName').value.trim() || 'Untitled test';
     $('createBtn').disabled = true;
     const scenario = $('testScenario').value.trim(), question = $('testQuestion').value.trim() || 'Which message do you prefer?';
     const segments = readSegments(), comment_prompt = $('commentPrompt').value.trim();
     const ask_email = document.querySelector('input[name="askEmail"]:checked').value;
-    try { const t = await db.createTest({ name, messages: readMessages(), scenario, question, segments, comment_prompt, ask_email }); location.href = '?test=' + t.id; }
-    catch (e) { showError(e); $('createBtn').disabled = false; }
+    const fields = { name, scenario, question, segments, comment_prompt, ask_email };
+    if (!messagesLocked) fields.messages = readMessages();
+    try {
+      if (editingId) { await db.updateTest(editingId, fields); location.href = '?test=' + editingId; }
+      else { const t = await db.createTest(fields); location.href = '?test=' + t.id; }
+    } catch (e) { showError(e); $('createBtn').disabled = false; }
   });
 
   /* ---------- results for one test ---------- */
@@ -384,7 +415,7 @@
     $('testTitle').textContent = test.name;
     document.title = test.name + ' results';
     const url = new URL('survey.html?t=' + test.id, location.href).href;
-    $('shareUrl').value = url; $('previewLink').href = url + '&preview';
+    $('shareUrl').value = url; $('previewLink').href = url + '&preview'; $('editLink').href = '?edit=' + test.id;
     $('briefScenario').textContent = test.scenario ? 'Scenario: ' + test.scenario : '';
     $('briefScenario').style.display = test.scenario ? '' : 'none';
     test.segments = test.segments || [];

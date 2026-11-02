@@ -2,6 +2,14 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-02: one final screen
+
+- The segment questions and email field moved from before the first pair to after the last one, on the same screen as the closing question (closing question first, then segments, then email). Participants now start choosing straight away. Choices are still saved before this screen; its answers are attached afterwards through `finish_response` (`supabase/008-final-screen.sql`). Skip appears only when nothing on the screen is required.
+
+## 2026-11-02: edit a test
+
+- **Edit test** on the results page opens the setup form prefilled. Name, scenario, question, segment questions, email setting and closing question can be changed at any time. Messages can be changed until the first response arrives, then they lock (with a note saying why, and that removing simulated participants unlocks them).
+
 ## 2026-11-02: sample size guidance
 
 - The client summary has a "How many participants it takes" section: a one line reading for this test's size, and a table of the chance of a clear winner by true top two split and sample size (15, 30, 40, 50, 100), from simulations of the tool's own rules.

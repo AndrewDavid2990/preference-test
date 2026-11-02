@@ -50,7 +50,7 @@ const db = {
   listResponses(testId) { return this.request("GET", "responses?select=*&order=created_at.asc&test_id=eq." + encodeURIComponent(testId)); },
   countResponses() { return this.request("GET", "responses?select=test_id"); },   // one tiny row per response, tallied by the caller
   addResponses(rows) { return this.request("POST", "responses", rows, false); },  // rows: [{ test_id, choices, simulated }]
-  addComment(id, comment) { return this.request("POST", "rpc/add_comment", { p_id: id, p_comment: comment }, false); },   // participants can only fill an empty comment on a row whose id they know
+  finishResponse(id, d) { return this.request("POST", "rpc/finish_response", { p_id: id, p_comment: d.comment, p_segments: d.segments, p_email: d.email }, false); },   // attaches the final screen's answers once, to a row whose id the participant's browser created
   deleteResponse(id) { return this.request("DELETE", "responses?id=eq." + encodeURIComponent(id)); },
   deleteSimulated(testId) { return this.request("DELETE", "responses?simulated=eq.true&test_id=eq." + encodeURIComponent(testId)); }
 };

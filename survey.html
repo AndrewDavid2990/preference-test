@@ -12,7 +12,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <div class="wrap">
@@ -38,19 +38,6 @@
     </div>
   </section>
 
-  <section id="about" class="screen">
-    <h2>One quick thing first</h2>
-    <form id="aboutForm">
-      <div id="segBlocks"></div>
-      <div id="emailBlock">
-        <label class="field" for="email" id="emailLabel">Email address</label>
-        <input class="text" id="email" type="email" autocomplete="email" inputmode="email">
-      </div>
-      <p class="alert" id="aboutError"></p>
-      <div class="row"><button class="btn primary" type="submit">Continue</button></div>
-    </form>
-  </section>
-
   <section id="survey" class="screen">
     <div class="progress"><span id="progText"></span><span id="progPct"></span></div>
     <div class="bar"><div id="progBar"></div></div>
@@ -62,14 +49,22 @@
     <div class="skip"><button class="link" id="backBtn">Back</button><button class="link" id="skipBtn">No preference, skip this pair</button></div>
   </section>
 
-  <section id="comment" class="screen">
-    <h2>One last question</h2>
-    <form id="commentForm">
-      <p class="question" id="commentPrompt"></p>
-      <textarea class="text" id="commentText" rows="4" maxlength="2000" placeholder="Optional"></textarea>
+  <section id="final" class="screen">
+    <h2 id="finalTitle">One last thing</h2>
+    <form id="finalForm">
+      <div id="commentBlock">
+        <p class="question" id="commentPrompt"></p>
+        <textarea class="text" id="commentText" rows="4" maxlength="2000" placeholder="Optional"></textarea>
+      </div>
+      <div id="segBlocks"></div>
+      <div id="emailBlock">
+        <label class="field" for="email" id="emailLabel">Email address</label>
+        <input class="text" id="email" type="email" autocomplete="email" inputmode="email">
+      </div>
+      <p class="alert" id="finalError"></p>
       <div class="row">
-        <button class="btn primary" type="submit" id="commentSend">Send</button>
-        <button class="link" type="button" id="commentSkip">Skip</button>
+        <button class="btn primary" type="submit" id="finalSend">Send</button>
+        <button class="link" type="button" id="finalSkip">Skip</button>
       </div>
     </form>
   </section>
@@ -84,9 +79,9 @@
 
 </div>
 
-<script src="config.js?v=10"></script>
-<script src="db.js?v=10"></script>
-<script src="analysis.js?v=10"></script>
+<script src="config.js?v=12"></script>
+<script src="db.js?v=12"></script>
+<script src="analysis.js?v=12"></script>
 <script>
   const $ = id => document.getElementById(id);
   const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0, 0); };
@@ -102,8 +97,7 @@
 
   let test = null, messages = [], pairs = [], idx = 0, current = {}, locked = false;
   let times = {}, shownAt = 0;   // milliseconds each pair took, from appearing on screen to the tap
-  let about = { segments: [], email: '' };   // answers from the "about you" screen, saved with the response
-  let responseId = null;                      // id of the saved response, so the closing comment can be attached to it
+  let responseId = null;   // id of the saved response, so the final screen's answers can be attached to it
 
   function message(title, body) { $('msgTitle').textContent = title; $('msgBody').textContent = body; show('message'); }
 
@@ -128,7 +122,7 @@
 
     const progress = load(progressKey);
     if (progress && progress.pairs.length === analysis.allPairs(messages.length).length) {
-      pairs = progress.pairs; idx = progress.idx; current = progress.current; about = progress.about || about; times = progress.times || {};
+      pairs = progress.pairs; idx = progress.idx; current = progress.current; times = progress.times || {};
       show('survey'); renderPair();
     } else {
       $('introScenario').textContent = test.scenario || '';
@@ -142,37 +136,15 @@
   const segQuestions = () => (test.segments || []).filter(sq => sq && sq.question && (sq.options || []).length >= 2);
   const asksSegment = () => segQuestions().length > 0;
   const asksEmail = () => test.ask_email === 'optional' || test.ask_email === 'required';
+  const asksComment = () => !!test.comment_prompt;
+  const asksAnything = () => asksComment() || asksSegment() || asksEmail();
 
-  // After the welcome screen: the "about you" questions if the test has any, otherwise straight in.
-  function begin() { asksSegment() || asksEmail() ? showAbout() : startSurvey(); }
-  function showAbout() {
-    $('emailBlock').style.display = asksEmail() ? '' : 'none';
-    const blocks = $('segBlocks'); blocks.innerHTML = '';
-    segQuestions().forEach((sq, qi) => {
-      const q = document.createElement('p'); q.className = 'question'; q.textContent = sq.question; blocks.appendChild(q);
-      const box = document.createElement('div'); box.className = 'choices';
-      sq.options.forEach(opt => {
-        const l = document.createElement('label'), r = document.createElement('input');
-        r.type = 'radio'; r.name = 'segment' + qi; r.value = opt; l.append(r, document.createTextNode(' ' + opt)); box.appendChild(l);
-      });
-      blocks.appendChild(box);
-    });
-    if (asksEmail()) { $('emailLabel').textContent = test.ask_email === 'required' ? 'Email address' : 'Email address (optional)'; $('email').required = test.ask_email === 'required'; }
-    show('about');
-  }
-  $('aboutForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const picked = segQuestions().map((_, qi) => document.querySelector('input[name="segment' + qi + '"]:checked'));
-    if (picked.some(p => !p)) { $('aboutError').textContent = 'Please pick one answer for each question.'; $('aboutError').classList.add('on'); return; }
-    $('aboutError').classList.remove('on');
-    about = { segments: picked.map(p => p.value), email: asksEmail() ? $('email').value.trim() : '' };
-    startSurvey();
-  });
+  function begin() { startSurvey(); }
 
   function startSurvey() {
     pairs = analysis.randomPairOrder(messages.length);
     idx = 0; current = {}; times = {};
-    save(progressKey, { pairs, idx, current, about, times });
+    save(progressKey, { pairs, idx, current, times });
     show('survey'); renderPair();
   }
   function renderPair() {
@@ -197,26 +169,27 @@
     const delay = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180;
     setTimeout(() => {
       idx++;
-      save(progressKey, { pairs, idx, current, about, times });
+      save(progressKey, { pairs, idx, current, times });
       if (idx < pairs.length) renderPair(); else finish();
     }, delay);
   }
   $('optA').addEventListener('click', () => choose(0));
   $('optB').addEventListener('click', () => choose(1));
   $('skipBtn').addEventListener('click', () => choose(null));
-  $('backBtn').addEventListener('click', () => { if (locked || idx === 0) return; idx--; save(progressKey, { pairs, idx, current, about, times }); renderPair(); });
+  $('backBtn').addEventListener('click', () => { if (locked || idx === 0) return; idx--; save(progressKey, { pairs, idx, current, times }); renderPair(); });
   document.addEventListener('keydown', e => {
     if (!$('survey').classList.contains('active')) return;
     if (e.key === '1') choose(0); if (e.key === '2') choose(1);
   });
 
-  // The choices are saved as soon as the last pair is answered. The closing question comes after,
-  // and its answer is attached to the saved response, so a closed tab never loses the choices.
+  // The choices are saved as soon as the last pair is answered. The final screen (closing question,
+  // segment questions, email) comes after, and its answers are attached to the saved response, so a
+  // closed tab never loses the choices.
   async function finish() {
     if (!preview) {
       try {
         responseId = (crypto.randomUUID ? crypto.randomUUID() : null);
-        const row = { test_id: testId, choices: current, times, simulated: false, segments: about.segments, email: about.email };
+        const row = { test_id: testId, choices: current, times, simulated: false };
         if (responseId) row.id = responseId;
         await db.addResponses([row]);
       } catch (e) {
@@ -225,7 +198,7 @@
       }
     }
     save(doneKey, { choices: current }); save(progressKey, null);
-    if (test.comment_prompt && (preview || responseId)) showComment(); else showResults(true);
+    if (asksAnything() && (preview || responseId)) showFinal(); else showResults(true);
   }
 
   function topChoice() {
@@ -233,20 +206,40 @@
     let best = 0; for (let i = 1; i < n; i++) if ((p[i] ? w[i] / p[i] : 0) > (p[best] ? w[best] / p[best] : 0)) best = i;
     return messages[best];
   }
-  function showComment() {
-    $('commentPrompt').textContent = test.comment_prompt.replace(/\{\s*top\s*choice\s*\}/gi, '"' + topChoice() + '"');
-    show('comment'); $('commentText').focus();
+  function showFinal() {
+    $('commentBlock').style.display = asksComment() ? '' : 'none';
+    if (asksComment()) $('commentPrompt').textContent = test.comment_prompt.replace(/\{\s*top\s*choice\s*\}/gi, '"' + topChoice() + '"');
+    const blocks = $('segBlocks'); blocks.innerHTML = '';
+    segQuestions().forEach((sq, qi) => {
+      const q = document.createElement('p'); q.className = 'question'; q.textContent = sq.question; blocks.appendChild(q);
+      const box = document.createElement('div'); box.className = 'choices';
+      sq.options.forEach(opt => {
+        const l = document.createElement('label'), r = document.createElement('input');
+        r.type = 'radio'; r.name = 'segment' + qi; r.value = opt; l.append(r, document.createTextNode(' ' + opt)); box.appendChild(l);
+      });
+      blocks.appendChild(box);
+    });
+    $('emailBlock').style.display = asksEmail() ? '' : 'none';
+    if (asksEmail()) { $('emailLabel').textContent = test.ask_email === 'required' ? 'Email address' : 'Email address (optional)'; $('email').required = test.ask_email === 'required'; }
+    const required = asksSegment() || test.ask_email === 'required';
+    $('finalSkip').style.display = required ? 'none' : '';
+    $('finalTitle').textContent = asksComment() && !asksSegment() && !asksEmail() ? 'One last question' : 'One last thing';
+    show('final');
+    if (asksComment()) $('commentText').focus();
   }
-  $('commentForm').addEventListener('submit', async e => {
+  $('finalForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const text = $('commentText').value.trim();
-    if (text && !preview) {
-      $('commentSend').disabled = true;
-      try { await db.addComment(responseId, text); } catch (err) { /* the choices are already saved; a lost comment is not worth blocking the thank you */ }
+    const picked = segQuestions().map((_, qi) => document.querySelector('input[name="segment' + qi + '"]:checked'));
+    if (picked.some(p => !p)) { $('finalError').textContent = 'Please pick one answer for each question.'; $('finalError').classList.add('on'); return; }
+    $('finalError').classList.remove('on');
+    const details = { comment: asksComment() ? $('commentText').value.trim() : '', segments: picked.map(p => p.value), email: asksEmail() ? $('email').value.trim() : '' };
+    if (!preview && (details.comment || details.segments.length || details.email)) {
+      $('finalSend').disabled = true;
+      try { await db.finishResponse(responseId, details); } catch (err) { /* the choices are already saved; a lost detail is not worth blocking the thank you */ }
     }
     showResults(true);
   });
-  $('commentSkip').addEventListener('click', () => showResults(true));
+  $('finalSkip').addEventListener('click', () => showResults(true));
 
   function showResults(fresh) {
     const n = messages.length, { w, p } = analysis.winsOf(n, current);
