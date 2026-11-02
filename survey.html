@@ -12,7 +12,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
 <div class="wrap">
@@ -79,9 +79,9 @@
 
 </div>
 
-<script src="config.js?v=16"></script>
-<script src="db.js?v=16"></script>
-<script src="analysis.js?v=16"></script>
+<script src="config.js?v=17"></script>
+<script src="db.js?v=17"></script>
+<script src="analysis.js?v=17"></script>
 <script>
   const $ = id => document.getElementById(id);
   const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0, 0); };
@@ -120,17 +120,17 @@
     const done = load(doneKey);
     if (done) { current = done.choices; pairs = analysis.allPairs(messages.length); return showResults(false); }
 
+    // A returning participant (same browser, unfinished survey) gets the welcome again with Continue,
+    // and carries on from the pair they were at. Everyone else starts fresh.
     const progress = load(progressKey);
     if (progress && progress.pairs.length === analysis.allPairs(messages.length).length) {
       pairs = progress.pairs; idx = progress.idx; current = progress.current; times = progress.times || {};
-      show('survey'); renderPair();
-    } else {
-      $('introScenario').textContent = test.scenario || '';
-      $('introScenario').style.display = test.scenario ? '' : 'none';
-      const pairCount = analysis.allPairs(messages.length).length;
-      $('introCount').textContent = pairCount + (pairCount === 1 ? ' pair, ' : ' pairs, ') + timeEstimate(pairCount) + '.';
-      showIntro();
     }
+    $('introScenario').textContent = test.scenario || '';
+    $('introScenario').style.display = test.scenario ? '' : 'none';
+    const pairCount = analysis.allPairs(messages.length).length;
+    $('introCount').textContent = pairCount + (pairCount === 1 ? ' pair, ' : ' pairs, ') + timeEstimate(pairCount) + '.' + (pairs.length && idx > 0 ? ' You were at pair ' + (idx + 1) + '.' : '');
+    showIntro();
   }
 
   const segQuestions = () => (test.segments || []).filter(sq => sq && sq.question && (sq.options || []).length >= 2);

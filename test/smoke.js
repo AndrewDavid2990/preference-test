@@ -224,7 +224,9 @@ async function fakeAuth(route, req) {
   await sp.tap('#backBtn'); check((await sp.locator('#progText').textContent()) === 'Pair 5 of 28' && await sp.locator('#optB.picked').count() === 1, 'back shows the previous pair with the earlier pick');
   await sp.tap('#optA'); await sp.waitForTimeout(220); check((await sp.locator('#progText').textContent()) === 'Pair 6 of 28', 'changed answer moves on again');
   await sp.tap('#skipBtn'); await sp.waitForTimeout(220);
-  await sp.reload(); await sp.waitForSelector('#survey.active');
+  await sp.reload(); await sp.waitForSelector('#intro.active');
+  check((await sp.locator('#beginBtn').textContent()) === 'Continue' && (await sp.locator('#introCount').textContent()).includes('You were at pair 7'), 'returning participant sees the welcome with Continue');
+  await sp.tap('#beginBtn'); await sp.waitForSelector('#survey.active');
   check((await sp.locator('#progText').textContent()) === 'Pair 7 of 28', 'progress survives reload');
   for (let i = 6; i < 28; i++) { await sp.tap(i % 2 ? '#optA' : '#optB'); await sp.waitForTimeout(220); }
   await sp.waitForSelector('#final.active');

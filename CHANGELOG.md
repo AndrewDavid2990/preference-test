@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-02: returning participants see the welcome
+
+- Someone who reopens an unfinished survey in the same browser now lands on the welcome screen with Continue and "You were at pair N", instead of straight into the pairs.
+
 ## 2026-11-02: duplicate a test
 
 - Duplicate button on the tests list and on each results page. The copy has the same messages and settings, no responses, and opens straight in the editor.
