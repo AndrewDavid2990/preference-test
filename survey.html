@@ -12,7 +12,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <div class="wrap">
@@ -79,9 +79,9 @@
 
 </div>
 
-<script src="config.js?v=12"></script>
-<script src="db.js?v=12"></script>
-<script src="analysis.js?v=12"></script>
+<script src="config.js?v=13"></script>
+<script src="db.js?v=13"></script>
+<script src="analysis.js?v=13"></script>
 <script>
   const $ = id => document.getElementById(id);
   const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0, 0); };
@@ -129,7 +129,7 @@
       $('introScenario').style.display = test.scenario ? '' : 'none';
       const pairCount = analysis.allPairs(messages.length).length;
       $('introCount').textContent = pairCount + (pairCount === 1 ? ' pair, ' : ' pairs, ') + timeEstimate(pairCount) + '.';
-      show('intro');
+      showIntro();
     }
   }
 
@@ -139,7 +139,9 @@
   const asksComment = () => !!test.comment_prompt;
   const asksAnything = () => asksComment() || asksSegment() || asksEmail();
 
-  function begin() { startSurvey(); }
+  // Start, or continue where they were if they went back to the instructions from the first pair.
+  function begin() { if (pairs.length && idx < pairs.length) { show('survey'); renderPair(); } else startSurvey(); }
+  function showIntro() { $('beginBtn').textContent = pairs.length ? 'Continue' : 'Start'; show('intro'); }
 
   function startSurvey() {
     pairs = analysis.randomPairOrder(messages.length);
@@ -155,7 +157,7 @@
     // when stepping back, show what they picked before so a slip is easy to fix
     const earlier = current[analysis.key(a, b)];
     $('optA').classList.toggle('picked', earlier === a); $('optB').classList.toggle('picked', earlier === b);
-    $('backBtn').style.visibility = idx > 0 ? '' : 'hidden';
+    $('backBtn').textContent = idx > 0 ? 'Back' : 'Back to the instructions';
     $('progText').textContent = 'Pair ' + (idx + 1) + ' of ' + pairs.length;
     $('progPct').textContent = Math.round(idx / pairs.length * 100) + '%';
     $('progBar').style.width = (idx / pairs.length * 100) + '%';
@@ -176,7 +178,11 @@
   $('optA').addEventListener('click', () => choose(0));
   $('optB').addEventListener('click', () => choose(1));
   $('skipBtn').addEventListener('click', () => choose(null));
-  $('backBtn').addEventListener('click', () => { if (locked || idx === 0) return; idx--; save(progressKey, { pairs, idx, current, times }); renderPair(); });
+  $('backBtn').addEventListener('click', () => {
+    if (locked) return;
+    if (idx === 0) return showIntro();   // first pair: back to the welcome and instructions, progress kept
+    idx--; save(progressKey, { pairs, idx, current, times }); renderPair();
+  });
   document.addEventListener('keydown', e => {
     if (!$('survey').classList.contains('active')) return;
     if (e.key === '1') choose(0); if (e.key === '2') choose(1);

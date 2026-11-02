@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-02: back to the instructions
+
+- On the first pair, Back reads "Back to the instructions" and returns to the welcome screen; Continue picks up at the same pair.
+
 ## 2026-11-02: one final screen
 
 - The segment questions and email field moved from before the first pair to after the last one, on the same screen as the closing question (closing question first, then segments, then email). Participants now start choosing straight away. Choices are still saved before this screen; its answers are attached afterwards through `finish_response` (`supabase/008-final-screen.sql`). Skip appears only when nothing on the screen is required.

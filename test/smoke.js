@@ -205,6 +205,11 @@ async function fakeAuth(route, req) {
   check((await sp.locator('#introCount').textContent()) === '28 pairs, about 2 minutes.', 'time estimate: ' + await sp.locator('#introCount').textContent());
   await sp.screenshot({ path: path.join(SHOTS, 'phone-intro.png'), fullPage: true });
   await sp.tap('#beginBtn'); await sp.waitForSelector('#survey.active');
+  const firstPair = await sp.locator('#optA .txt').textContent();
+  check((await sp.locator('#backBtn').textContent()) === 'Back to the instructions', 'first pair offers a way back to the instructions');
+  await sp.tap('#backBtn'); await sp.waitForSelector('#intro.active'); check((await sp.locator('#beginBtn').textContent()) === 'Continue', 'instructions shown again with Continue');
+  await sp.tap('#beginBtn'); await sp.waitForSelector('#survey.active');
+  check((await sp.locator('#optA .txt').textContent()) === firstPair && (await sp.locator('#progText').textContent()) === 'Pair 1 of 28', 'continue returns to the same first pair');
   check(await sp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll on phone');
   await sp.screenshot({ path: path.join(SHOTS, 'phone-survey.png'), fullPage: true });
   for (let i = 0; i < 5; i++) { await sp.tap(i % 2 ? '#optA' : '#optB'); await sp.waitForTimeout(220); }
