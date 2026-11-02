@@ -108,7 +108,7 @@ input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2p
 .bar > div { height: 100%; background: var(--ink); width: 0; transition: width .25s ease; }
 @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
 .question { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; color: var(--ink); margin: 0 0 20px; }
-.scenario { font-size: 17px; line-height: 1.5; color: var(--ink); padding: 20px 22px; background: var(--panel); border-top: 6px solid var(--red); margin: 0 0 22px; }
+.scenario { font-size: 17px; line-height: 1.5; color: var(--ink); padding: 20px 22px; background: var(--panel); border-top: 6px solid var(--red); margin: 0 0 22px; white-space: pre-line; }   /* paragraph breaks typed in the scenario are kept */
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .option {
   display: flex; flex-direction: column; justify-content: space-between; gap: 20px; min-height: 200px; padding: 24px;
@@ -191,7 +191,7 @@ td.self { background: var(--line); }
 
 /* share box and brief on the results page */
 .brief { font-size: 14px; color: var(--body); margin: -8px 0 22px; padding: 14px 18px; background: var(--panel); max-width: 64ch; }
-.brief p { margin: 0 0 4px; }
+.brief p { margin: 0 0 4px; white-space: pre-line; }
 .brief p:last-child { margin: 0; }
 .share { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 8px; }
 .share input { flex: 1; width: auto; min-width: 220px; font-size: 14px; padding: 10px 12px; color: var(--muted); }

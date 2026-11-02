@@ -136,8 +136,8 @@ async function fakeAuth(route, req) {
   check(await page.locator('#consist li').count() === 15, 'consistency lists 15');
   await page.click('#editLink'); await page.waitForSelector('#setup.active');
   check(await page.locator('#msgLocked').isVisible() && (await page.locator('#msgLocked').textContent()).includes('simulated') && await page.locator('#msgList input').first().isDisabled() && await page.locator('#msgTools').isHidden(), 'messages lock once responses exist');
-  await page.fill('#testScenario', 'Edited scenario after responses.'); await page.click('#createBtn'); await page.waitForSelector('#group.active');
-  check(tables.tests[0].scenario === 'Edited scenario after responses.' && tables.tests[0].messages[7] === 'A brand new eighth message', 'other fields still editable, messages untouched');
+  await page.fill('#testScenario', 'Edited scenario after responses.\n\nSecond paragraph.'); await page.click('#createBtn'); await page.waitForSelector('#group.active');
+  check(tables.tests[0].scenario === 'Edited scenario after responses.\n\nSecond paragraph.' && tables.tests[0].messages[7] === 'A brand new eighth message', 'other fields still editable, messages untouched');
   await page.click('.tab[data-v="v-consist"]');
   check(tables.responses.every(r => ['Founder', 'Marketer', 'Sales'].includes(r.segments[0]) && ['Under 50', '50 or more'].includes(r.segments[1])), 'simulated participants answer every segment question');
   check(tables.responses.every(r => Object.keys(r.times).length === 28), 'simulated participants carry timings');
@@ -178,7 +178,7 @@ async function fakeAuth(route, req) {
   /* preview: nothing saved */
   const pv = await ctx.newPage(); await pv.goto(shareUrl + '&preview'); await pv.waitForSelector('#intro.active');
   check(await pv.locator('#previewBar').isVisible(), 'preview banner');
-  check((await pv.locator('#introScenario').textContent()).startsWith('Edited scenario'), 'scenario shown on intro');
+  check((await pv.locator('#introScenario').textContent()).includes('\n\nSecond paragraph') && await pv.evaluate(() => getComputedStyle(document.getElementById('introScenario')).whiteSpace === 'pre-line'), 'scenario shown on intro with its paragraph breaks');
   check((await pv.locator('#intro h1').textContent()) === 'You have been invited to a quick survey' && !(await pv.locator('#intro').innerText()).includes('Sample headline'), 'generic welcome, test name hidden');
   await pv.click('#beginBtn'); await pv.waitForSelector('#survey.active');
   check((await pv.locator('#question').textContent()).startsWith('Which headline'), 'custom question above pairs');

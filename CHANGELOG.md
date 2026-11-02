@@ -5,6 +5,7 @@ Newest first. Dates are when the change went live on `main`.
 ## 2026-11-02: back to the instructions
 
 - An Edit link next to the scenario on the results page opens the same edit form as Edit test.
+- Paragraph breaks typed into the scenario are kept on the participant's welcome screen, the results page and the summary.
 
 - On the first pair, Back reads "Back to the instructions" and returns to the welcome screen; Continue picks up at the same pair.
 

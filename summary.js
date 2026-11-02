@@ -140,7 +140,7 @@ const summary = {
   h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; margin: 34px 0 10px; }
   .meta { color: var(--muted); margin: 0 0 22px; }
   .brief { background: var(--panel); padding: 14px 18px; margin: 0 0 8px; }
-  .brief p { margin: 0 0 4px; } .brief p:last-child { margin: 0; }
+  .brief p { margin: 0 0 4px; white-space: pre-line; } .brief p:last-child { margin: 0; }
   .verdict { border-top: 6px solid var(--ink); background: var(--panel); padding: 20px 22px; margin: 26px 0 0; }
   .verdict.soft { border-top-color: var(--line); }
   .verdict h2 { margin: 0 0 6px; font-size: 22px; }
