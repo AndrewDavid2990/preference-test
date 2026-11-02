@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 <div class="wrap">
@@ -137,7 +137,7 @@
     <p class="lead" id="groupLead"></p>
 
     <div class="brief" id="brief">
-      <p id="briefScenario"></p>
+      <p><span id="briefScenario"></span> <a class="link" id="editBrief">Edit</a></p>
       <p id="briefQuestion"></p>
       <p id="briefClosing"><span id="closingText"></span> <button class="link" id="editClosing" type="button">Edit</button></p>
       <form id="closingForm" style="display:none">
@@ -225,11 +225,11 @@
 
 </div>
 
-<script src="config.js?v=13"></script>
-<script src="auth.js?v=13"></script>
-<script src="db.js?v=13"></script>
-<script src="analysis.js?v=13"></script>
-<script src="summary.js?v=13"></script>
+<script src="config.js?v=14"></script>
+<script src="auth.js?v=14"></script>
+<script src="db.js?v=14"></script>
+<script src="analysis.js?v=14"></script>
+<script src="summary.js?v=14"></script>
 <script>
   const MAX = 8;
   const sample = [
@@ -416,8 +416,8 @@
     document.title = test.name + ' results';
     const url = new URL('survey.html?t=' + test.id, location.href).href;
     $('shareUrl').value = url; $('previewLink').href = url + '&preview'; $('editLink').href = '?edit=' + test.id;
-    $('briefScenario').textContent = test.scenario ? 'Scenario: ' + test.scenario : '';
-    $('briefScenario').style.display = test.scenario ? '' : 'none';
+    $('briefScenario').textContent = test.scenario ? 'Scenario: ' + test.scenario : 'No scenario.';
+    $('editBrief').href = '?edit=' + test.id;
     test.segments = test.segments || [];
     $('briefQuestion').textContent = 'Question: ' + (test.question || 'Which message do you prefer?')
       + test.segments.map(sq => ' · Segment: ' + sq.question).join('') + (test.ask_email && test.ask_email !== 'off' ? ' · Email ' + test.ask_email : '');

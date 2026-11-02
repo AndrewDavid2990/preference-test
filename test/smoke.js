@@ -111,7 +111,7 @@ async function fakeAuth(route, req) {
   check((await page.locator('#briefQuestion').textContent()).includes('Segment: Which best') && (await page.locator('#segmentFilters select').count()) === 2, 'results page shows both segment questions with a filter each');
 
   /* edit before any responses: everything is open, including messages */
-  await page.click('#editLink'); await page.waitForSelector('#setup.active');
+  await page.click('#editBrief'); await page.waitForSelector('#setup.active');
   check((await page.locator('#setupTitle').textContent()) === 'Edit test' && await page.locator('#msgLocked').isHidden() && (await page.locator('#msgList input').count()) === 8, 'editor opens with messages unlocked');
   await page.fill('#testName', 'Sample headline test v2'); await page.locator('#msgList input').nth(7).fill('A brand new eighth message');
   await page.click('#createBtn'); await page.waitForSelector('#group.active');
