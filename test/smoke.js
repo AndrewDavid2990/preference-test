@@ -142,7 +142,7 @@ async function fakeAuth(route, req) {
   await sum.waitForSelector('.verdict'); await sum.waitForTimeout(300);
   const verdict = await sum.locator('.verdict h2').textContent();
   check(['Clear winner', 'Likely winner', 'Top two are close', 'No outright winner'].includes(verdict), 'summary verdict: ' + verdict);
-  check(await sum.locator('table.rank:not(.segs) tr').count() === 9, 'summary ranking has 8 rows');
+  check(await sum.locator('table.rank:not(.segs):not(.power) tr').count() === 9, 'summary ranking has 8 rows');
   check(await sum.locator('table.grid td').count() === 64, 'summary head to head grid');
   check((await sum.locator('h1').textContent()) === 'Sample headline test' && (await sum.locator('.brief').textContent()).includes('book a call'), 'summary title, scenario and question');
   check((await sum.locator('body').innerText()).includes('simulated'), 'summary warns about simulated data');
