@@ -13,6 +13,8 @@ Both are plain HTML, CSS and JavaScript. No build step. Built for [Tested](https
 
 More docs: [HOW-IT-WORKS.md](HOW-IT-WORKS.md) explains the machinery in plain language, [CHANGELOG.md](CHANGELOG.md) lists what changed and when.
 
+The code is visible because GitHub Pages hosts it from this repo. It is not open source: see [LICENSE](LICENSE).
+
 ## One time setup (about 15 minutes)
 
 ### 1. Create the database

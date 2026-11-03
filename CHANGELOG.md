@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-03: license notice
+
+- Added a LICENSE file: all rights reserved, source visible for hosting only. The repo stays public because that is what makes GitHub Pages free.
+
 ## 2026-11-03: final screen answers were not being saved
 
 - Bug: since the final screen went live (2 Nov), comments, segment answers and emails were silently lost for real participants. The choices and timings were saved. Cause: the database function that attaches the final answers was never actually created. The call that created it also contained a test wrapped in a rollback, and the connector ran the whole call as one transaction, so the rollback undid the creation too. The page then ignored the "function not found" error. Three responses on "Newsletter test" are affected; their final answers cannot be recovered.

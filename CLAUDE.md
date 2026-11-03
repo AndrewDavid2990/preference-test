@@ -33,6 +33,7 @@ Files:
 - `test/smoke.js`: Playwright end to end test with a fake PostgREST and auth that mirror the real policies (anon: select tests, insert responses with return=minimal only; admin: everything). Run `node test/smoke.js` from the repo root before every push. Screenshots in `test/shots/` (gitignored).
 - `supabase/schema.sql`: tables and the initial fully open policies. `supabase/002-login.sql`: adds `admins (email)` and `is_admin()`, and alters the write and read-responses policies to `authenticated` with `is_admin()`. Net effect: anon can select tests and insert responses; everything else needs a signed in user listed in `admins`. Sign ups are left on (harmless, unlisted users get nothing). Both files have been applied to the live project `eajbqxaamwpqaumncklw`.
 - `HOW-IT-WORKS.md`, `CHANGELOG.md`: owner facing docs, keep them current.
+- `LICENSE`: all rights reserved notice. The repo is public only because GitHub Pages requires it on the free plan; a move to a private repo on Netlify or Cloudflare Pages with a custom domain (survey.tested.agency) is the agreed next hosting step when the owner wants it.
 
 Data model:
 - `tests { id, name, scenario, question, messages: [string], segments: [{ question, options: [string] }], ask_email, comment_prompt, closed, created_at }`. Messages are immutable once any response exists because responses refer to them by index; before that they can be edited. `name` is admin only; participants never see it.
