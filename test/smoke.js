@@ -134,6 +134,10 @@ async function fakeAuth(route, req) {
     await page.screenshot({ path: path.join(SHOTS, 'admin-' + v + '.png'), fullPage: true });
   }
   check(await page.locator('#consist li').count() === 15, 'consistency lists 15');
+  await page.click('.tab[data-v="v-h2h"]');
+  const h2hNote = await page.locator('#h2hNote').textContent(), upsetRows = await page.locator('#h2h tr.upset').count(), upsetCells = await page.locator('#h2h td.upset-cell').count();
+  check((upsetRows > 0 && h2hNote.startsWith('Highlighted:') && upsetCells >= upsetRows) || (upsetRows === 0 && upsetCells === 0 && h2hNote.startsWith('Nothing worth flagging')), 'head to head flags upsets or says there are none: ' + h2hNote.slice(0, 60));
+  await page.click('.tab[data-v="v-consist"]');
   await page.click('#editLink'); await page.waitForSelector('#setup.active');
   check(await page.locator('#msgLocked').isVisible() && (await page.locator('#msgLocked').textContent()).includes('simulated') && await page.locator('#msgList input').first().isDisabled() && await page.locator('#msgTools').isHidden(), 'messages lock once responses exist');
   await page.fill('#testScenario', 'Edited scenario after responses.\n\nSecond paragraph.'); await page.click('#createBtn'); await page.waitForSelector('#group.active');

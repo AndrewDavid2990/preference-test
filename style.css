@@ -167,6 +167,8 @@ th { font-weight: 500; font-size: 13px; color: var(--muted); }
 th.rowhead { text-align: left; color: var(--ink); max-width: 260px; white-space: normal; font-weight: 500; font-size: 13px; }
 td.cell { font-weight: 600; min-width: 56px; color: var(--ink); }
 td.self { background: var(--line); }
+tr.upset th.rowhead { box-shadow: inset 6px 0 0 var(--ink); padding-left: 16px; }   /* ranked above a message it lost to or tied with */
+td.upset-cell { outline: 2px solid var(--ink); outline-offset: -2px; }
 .legend { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
 
 /* participant list (consistency) */

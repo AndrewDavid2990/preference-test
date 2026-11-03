@@ -49,13 +49,18 @@ const summary = {
     }).join("");
 
     /* head to head grid */
+    const upsetOf = (i, j) => st.upsets.find(u => u.i === i && u.j === j);
     const grid = `<table class="grid"><tr><th></th>${st.order.map((_, pos) => `<th>#${pos + 1}</th>`).join("")}</tr>` +
-      st.order.map((i, pos) => `<tr><th class="rowhead">#${pos + 1} ${msg(i)}</th>` + st.order.map(j => {
+      st.order.map((i, pos) => `<tr${st.upsets.some(u => u.i === i) ? ' class="upset"' : ""}><th class="rowhead">#${pos + 1} ${msg(i)}</th>` + st.order.map(j => {
         if (i === j) return '<td class="self"></td>';
         const r = st.N[i][j] ? st.M[i][j] / st.N[i][j] : 0.5, a = Math.abs(r - 0.5) * 2;
         const style = r >= 0.5 ? `background:color-mix(in srgb, #d93637 ${Math.round(a * 55)}%, #fff)` : "background:#f5f4f1;color:#9b9893";
-        return `<td style="${style}">${st.N[i][j] ? pct(r) : ""}</td>`;
+        return `<td class="${upsetOf(i, j) ? "upset-cell" : ""}" style="${style}">${st.N[i][j] ? pct(r) : ""}</td>`;
       }).join("") + "</tr>").join("") + "</table>";
+    const posOf = i => "#" + (st.order.indexOf(i) + 1);
+    const upsetNote = st.upsets.length
+      ? `Highlighted: ${st.upsets.map(u => `${posOf(u.i)} ${u.tie ? "tied with" : "lost to"} ${posOf(u.j)} (${pct(st.M[u.i][u.j] / st.N[u.i][u.j])})`).join("; ")}. The overall ranking and the head to head do not fully agree there, usually a specific rivalry or a small sample.`
+      : "Nothing worth flagging: every message beat every message ranked below it.";
 
     /* by segment: for each unfiltered segment question, the top three messages per answer */
     let bySegment = "";
@@ -165,6 +170,8 @@ const summary = {
   .grid th, .grid td { padding: 7px 9px; border: 1px solid var(--line); text-align: center; white-space: nowrap; font-weight: 600; color: var(--ink); }
   .grid th.rowhead { text-align: left; max-width: 260px; white-space: normal; font-weight: 500; font-size: 12px; }
   .grid td.self { background: var(--line); }
+  .grid tr.upset th.rowhead { box-shadow: inset 6px 0 0 var(--ink); padding-left: 15px; }
+  .grid td.upset-cell { outline: 2px solid var(--ink); outline-offset: -2px; }
   ul { padding-left: 18px; margin: 0; } li { margin-bottom: 8px; }
   .method { color: var(--muted); font-size: 12.5px; }
   .method p { margin: 0 0 8px; }
@@ -195,7 +202,7 @@ const summary = {
   <p class="method" style="margin-top:8px"><strong>Win rate</strong> is how often the message won the pairs it appeared in. <strong>Strength</strong> is the chance it beats an average message in this set, from a Bradley-Terry model${st.P >= 5 ? "; the small range is a 90% confidence band from resampling participants. Overlapping bands mean those messages are not clearly separated" : ""}.</p>
 
   <h2>Head to head</h2>
-  <p class="method">Share of participants who picked the row message over the column message. Deeper red means the row won that matchup more often.</p>
+  <p class="method">Share of participants who picked the row message over the column message. Deeper red means the row won that matchup more often. ${upsetNote}</p>
   ${grid}
 
   ${bySegment}

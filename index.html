@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 <div class="wrap">
@@ -187,9 +187,10 @@
     </div>
 
     <div class="view" id="v-h2h">
-      <p class="note">Share of participants who picked the row message over the column message. Look for a top message that loses to one specific rival.</p>
+      <p class="note">Share of participants who picked the row message over the column message.</p>
+      <p class="note" id="h2hNote"></p>
       <div class="scroll"><table id="h2h"></table></div>
-      <p class="legend">Deeper red means the row message won that matchup more often. Based only on pairs that were not skipped.</p>
+      <p class="legend">Deeper red means the row message won that matchup more often. Based only on pairs that were not skipped. A highlighted row is ranked above a message it lost to or tied with; the cell in question is outlined.</p>
     </div>
 
     <div class="view" id="v-bt">
@@ -226,11 +227,11 @@
 
 </div>
 
-<script src="config.js?v=17"></script>
-<script src="auth.js?v=17"></script>
-<script src="db.js?v=17"></script>
-<script src="analysis.js?v=17"></script>
-<script src="summary.js?v=17"></script>
+<script src="config.js?v=18"></script>
+<script src="auth.js?v=18"></script>
+<script src="db.js?v=18"></script>
+<script src="analysis.js?v=18"></script>
+<script src="summary.js?v=18"></script>
 <script>
   const MAX = 8;
   const sample = [
@@ -564,14 +565,16 @@
     const head = document.createElement('tr'); head.appendChild(document.createElement('th'));
     order.forEach((i, pos) => { const th = document.createElement('th'); th.textContent = '#' + (pos + 1); th.title = messages[i]; head.appendChild(th); });
     t.appendChild(head);
+    const upsetOf = (i, j) => st.upsets.find(u => u.i === i && u.j === j);
     order.forEach((i, pos) => {
       const tr = document.createElement('tr');
+      if (st.upsets.some(u => u.i === i)) tr.className = 'upset';
       const rh = document.createElement('th'); rh.className = 'rowhead'; rh.textContent = '#' + (pos + 1) + '  ' + messages[i]; tr.appendChild(rh);
       order.forEach(j => {
         const td = document.createElement('td');
         if (i === j) { td.className = 'self'; }
         else {
-          td.className = 'cell';
+          td.className = 'cell' + (upsetOf(i, j) ? ' upset-cell' : '');
           const r = N[i][j] ? M[i][j] / N[i][j] : 0.5;
           td.textContent = N[i][j] ? pct(r) : '';
           td.title = M[i][j] + ' of ' + N[i][j];
@@ -584,6 +587,10 @@
       });
       t.appendChild(tr);
     });
+    const posOf = i => '#' + (order.indexOf(i) + 1);
+    $('h2hNote').textContent = st.upsets.length
+      ? 'Highlighted: ' + st.upsets.map(u => posOf(u.i) + (u.tie ? ' tied with ' : ' lost to ') + posOf(u.j) + ' (' + pct(M[u.i][u.j] / N[u.i][u.j]) + ')').join('; ') + '. The overall ranking and the head to head do not fully agree there, usually because of a specific rivalry or a small sample.'
+      : 'Nothing worth flagging: every message beat every message ranked below it.';
 
     // Bradley-Terry strength with bootstrap band
     const btOrder = messages.map((_, i) => i).sort((a, b) => st.strength[b].value - st.strength[a].value);

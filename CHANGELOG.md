@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-03: head to head upsets
+
+- On the Head to head tab (and in the summary grid), a row is highlighted when that message is ranked above one it lost to or tied with, with the cell outlined. The note above the grid lists each case, or says there is nothing worth flagging.
+
 ## 2026-11-02: returning participants see the welcome
 
 - Someone who reopens an unfinished survey in the same browser now lands on the welcome screen with Continue and "You were at pair N", instead of straight into the pairs.

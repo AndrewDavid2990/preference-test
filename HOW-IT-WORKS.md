@@ -55,7 +55,7 @@ Messages are stored as a list and every response refers to them by position (mes
 ## The maths, briefly
 
 - **Ranking** is total wins divided by total pairs rated, per message. In a full round-robin where everyone rates every pair this is identical to average rank, so it is a fair headline number.
-- **Head to head** is a grid: for each pair of messages, what share of participants picked the row message over the column one. Skipped pairs are left out of both counts.
+- **Head to head** is a grid: for each pair of messages, what share of participants picked the row message over the column one. Skipped pairs are left out of both counts. A row is highlighted when that message sits above one it lost to or tied with head to head, and the cell is outlined; the note above the grid lists them, or says there is nothing worth flagging.
 - **Strength scores** fit a Bradley-Terry model, the standard way to turn pairwise comparisons into a single strength per item (it is what chess ratings are built on). The score shown is each message's chance of beating an average message in the set. The band around it comes from resampling participants 150 times and refitting, and only appears with 5 or more participants.
 - **Winner check** asks two things: does #1 beat every other message head to head (a Condorcet winner), and is #1 versus #2 a statistically clear gap or a coin flip (an exact binomial test on that one matchup).
 - **Polarization** looks at where each message landed in every participant's personal ranking. A message that is 1st for some and last for others has a wide spread and is flagged "split". Total wins alone would show it as average.

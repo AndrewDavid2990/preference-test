@@ -55,7 +55,7 @@ Admin features: sign in and out, change password, tests list with response count
 
 ## Analysis methods in the code
 
-- Head to head matrix: share of participants who picked row over column, skipped pairs excluded.
+- Head to head matrix: share of participants who picked row over column, skipped pairs excluded. `groupStats.upsets` lists {i, j, tie} where i is ranked above j but M[i][j]/N[i][j] <= 0.5; rows get `.upset` (Ink left bar) and cells `.upset-cell` (Ink outline), with a note listing them or "Nothing worth flagging".
 - Bradley-Terry: iterative MM fit, normalized to geometric mean 1, displayed as p/(p+1) = chance of beating an average message. 90% interval from 150 bootstrap resamples of participants, only when 5+ participants.
 - Winner check: Condorcet test (does #1 win a majority against every other message) and a two-sided exact binomial test on #1 vs #2 head to head.
 - Polarization: per message, histogram of rank positions across participants, mean, standard deviation, and a "split" flag when 30%+ rank it top two and 30%+ rank it bottom two.

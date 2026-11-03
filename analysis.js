@@ -151,7 +151,13 @@ const analysis = {
     });
 
     const skipped = parts.reduce((s, pt) => s + Object.values(pt.choices).filter(v => v === null).length, 0);
-    return { P, M, N, W, Tot, rate, order, strength, top, second, losses, topTwo, spread, skipped };
+
+    // upsets: a message ranked above another that it lost to, or only tied with, head to head
+    const upsets = [];
+    order.forEach((i, pos) => order.slice(pos + 1).forEach(j => {
+      if (N[i][j] && M[i][j] / N[i][j] <= 0.5) upsets.push({ i, j, tie: M[i][j] * 2 === N[i][j] });
+    }));
+    return { P, M, N, W, Tot, rate, order, strength, top, second, losses, topTwo, spread, skipped, upsets };
   },
 
   /* ---------- simulation ---------- */
