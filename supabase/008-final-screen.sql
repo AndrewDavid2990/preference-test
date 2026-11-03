@@ -16,8 +16,7 @@ $$;
 revoke all on function finish_response(uuid, text, jsonb, text) from public;
 grant execute on function finish_response(uuid, text, jsonb, text) to anon, authenticated;
 
--- After creating or changing a function through the connector, the API layer (PostgREST) must be told to
--- refresh its list, or calls to the new function return 404 "not in the schema cache". The SQL editor does
--- this automatically; execute_sql through the connector did not, which silently lost three participants'
--- final answers on 2026-11-02. Always run this afterwards and then call the function through the REST API once.
+-- Note: the first attempt to apply this on 2026-11-02 was rolled back by accident (the creating call also
+-- held a begin/rollback test, and the connector runs a call as one transaction). It was applied for real on
+-- 2026-11-03. Confirm any new function through the REST API, not only in SQL.
 notify pgrst, 'reload schema';

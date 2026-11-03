@@ -4,8 +4,8 @@ Newest first. Dates are when the change went live on `main`.
 
 ## 2026-11-03: final screen answers were not being saved
 
-- Bug: since the final screen went live (2 Nov), comments, segment answers and emails were silently lost for real participants. The choices and timings were saved. Cause: the API in front of the database had not refreshed its list of functions, so the call that attaches the final answers returned "not found", and the page ignored the error. Three responses on "Newsletter test" are affected; their final answers cannot be recovered.
-- Fixed by refreshing the API's function list, and the page now reports a failed send with a retry instead of showing the thank you regardless.
+- Bug: since the final screen went live (2 Nov), comments, segment answers and emails were silently lost for real participants. The choices and timings were saved. Cause: the database function that attaches the final answers was never actually created. The call that created it also contained a test wrapped in a rollback, and the connector ran the whole call as one transaction, so the rollback undid the creation too. The page then ignored the "function not found" error. Three responses on "Newsletter test" are affected; their final answers cannot be recovered.
+- Fixed by creating the function on its own and confirming it through the API, and the page now reports a failed send with a retry instead of showing the thank you regardless.
 
 ## 2026-11-03: head to head upsets
 
