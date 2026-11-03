@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
 <div class="wrap">
@@ -158,7 +158,7 @@
       <a class="btn" id="editLink">Edit test</a>
       <button class="btn" id="dupBtn" type="button">Duplicate</button>
     </div>
-    <p class="small" style="margin:-10px 0 20px">Preview runs the survey without saving anything, so you can check it or show a client. Only send the participant link itself to real participants.</p>
+    <p class="small" style="margin:-10px 0 20px">Preview runs the survey without saving anything, so you can check it or show a client. Only send the participant link itself to real participants. To take it again yourself in a browser that already finished it, add <code>&amp;reset</code> to the end of the participant link; that forgets the browser's memory and saves a real response.</p>
 
     <div class="row">
       <span id="segmentFilters" class="row"></span>
@@ -227,11 +227,11 @@
 
 </div>
 
-<script src="config.js?v=19"></script>
-<script src="auth.js?v=19"></script>
-<script src="db.js?v=19"></script>
-<script src="analysis.js?v=19"></script>
-<script src="summary.js?v=19"></script>
+<script src="config.js?v=20"></script>
+<script src="auth.js?v=20"></script>
+<script src="db.js?v=20"></script>
+<script src="analysis.js?v=20"></script>
+<script src="summary.js?v=20"></script>
 <script>
   const MAX = 8;
   const sample = [

@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-03: reset link
+
+- Adding `&reset` to a participant link clears that browser's memory of the test (progress and "already completed"), so the owner can take it again; the thank you screen then offers Start over. Explained under the participant link on the results page.
+
 ## 2026-11-03: license notice
 
 - Added a LICENSE file: all rights reserved, source visible for hosting only. The repo stays public because that is what makes GitHub Pages free.

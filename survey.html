@@ -12,7 +12,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
 <div class="wrap">
@@ -79,15 +79,16 @@
 
 </div>
 
-<script src="config.js?v=19"></script>
-<script src="db.js?v=19"></script>
-<script src="analysis.js?v=19"></script>
+<script src="config.js?v=20"></script>
+<script src="db.js?v=20"></script>
+<script src="analysis.js?v=20"></script>
 <script>
   const $ = id => document.getElementById(id);
   const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0, 0); };
   const params = new URLSearchParams(location.search);
   const testId = params.get('t');
   const preview = params.has('preview');   // preview mode: nothing is saved, in the database or in this browser
+  const reset = params.has('reset');       // for the test owner: forget this browser's memory of the test and allow starting over
 
   // Keys for the little bit of state kept in this participant's browser, so a refresh does not lose their place
   // and finishing twice by accident is harder. Preview mode skips all of this.
@@ -117,6 +118,7 @@
     messages = test.messages;
     $('question').textContent = test.question || 'Which message do you prefer?';
 
+    if (reset) { save(doneKey, null); save(progressKey, null); pairs = []; idx = 0; current = {}; times = {}; }
     const done = load(doneKey);
     if (done) { current = done.choices; pairs = analysis.allPairs(messages.length); return showResults(false); }
 
@@ -269,12 +271,13 @@
     const skipped = pairs.length - w.reduce((s, x) => s + x, 0);
     $('resultsLead').textContent = (fresh ? 'Here is your personal ranking, by how often each message won its matchups' : 'You already completed this test. Here is your ranking') + (skipped ? ' (' + skipped + ' skipped).' : '.');
     $('resultsNote').textContent = preview ? 'This was a preview, so nothing was saved.' : 'Your answers have been recorded. You can close this page.';
-    $('againBtn').style.display = preview ? '' : 'none';   // repeating is for previews only
+    $('againBtn').style.display = preview || reset ? '' : 'none';   // repeating is for previews and the owner's reset link
+    $('againBtn').textContent = preview ? 'Run through it again' : 'Start over';
     show('results');
   }
 
   $('beginBtn').addEventListener('click', begin);
-  $('againBtn').addEventListener('click', begin);
+  $('againBtn').addEventListener('click', () => { save(doneKey, null); pairs = []; idx = 0; current = {}; times = {}; responseId = null; showIntro(); });
 
   init();
 </script>

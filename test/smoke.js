@@ -250,15 +250,23 @@ async function fakeAuth(route, req) {
   await sp.screenshot({ path: path.join(SHOTS, 'phone-done.png'), fullPage: true });
   await sp.reload(); await sp.waitForSelector('#results.active');
   check((await sp.locator('#resultsLead').textContent()).startsWith('You already completed'), 'done flag blocks retake');
+  await sp.goto(shareUrl + '&reset'); await sp.waitForSelector('#intro.active');
+  check((await sp.locator('#beginBtn').textContent()) === 'Start', 'reset link forgets the browser memory');
+  await sp.tap('#beginBtn'); await sp.waitForSelector('#survey.active'); for (let i = 0; i < 28; i++) { await sp.tap('#optA'); await sp.waitForTimeout(220); }
+  await sp.waitForSelector('#final.active'); await sp.check('input[name="segment0"][value="Founder"]'); await sp.check('input[name="segment1"][value="Under 50"]'); await sp.tap('#finalSend'); await sp.waitForSelector('#results.active');
+  check(tables.responses.filter(r => !r.simulated).length === 2 && await sp.locator('#againBtn').isVisible() && (await sp.locator('#againBtn').textContent()) === 'Start over', 'reset run saves a real second response and offers start over');
+  await sp.tap('#againBtn'); await sp.waitForSelector('#intro.active'); check(true, 'start over returns to the welcome');
+  await sp.goto(shareUrl); await sp.waitForSelector('#intro.active'); await sp.tap('#beginBtn'); await sp.waitForSelector('#survey.active');
+  check(true, 'without the done flag a fresh run starts');
   await phone.close();
 
   /* admin: refresh, export, remove simulated, close, delete */
-  await page.click('#refreshBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('15 participants'));
+  await page.click('#refreshBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('16 participants'));
   await page.click('.tab[data-v="v-comments"]'); check(await page.locator('#comments li').count() === 1 && (await page.locator('#comments .said').textContent()) === 'It felt the most concrete.', 'comments tab lists the comment');
   await page.screenshot({ path: path.join(SHOTS, 'admin-v-comments.png'), fullPage: true });
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportBtn')]);
-  const csv = fs.readFileSync(await dl.path(), 'utf8'); check(csv.split('\n').length === 1 + 15 * 28 && csv.includes('"Sales","Under 50","pat@example.com","It felt the most concrete."') && csv.split('\n')[0].startsWith('participant,submitted,"Which best describes you?","Company size",email,comment'), 'csv has a column per segment question, email, comment and seconds');
-  await page.click('#unsimBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('1 participant,'));
+  const csv = fs.readFileSync(await dl.path(), 'utf8'); check(csv.split('\n').length === 1 + 16 * 28 && csv.includes('"Sales","Under 50","pat@example.com","It felt the most concrete."') && csv.split('\n')[0].startsWith('participant,submitted,"Which best describes you?","Company size",email,comment'), 'csv has a column per segment question, email, comment and seconds');
+  await page.click('#unsimBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('2 participants,'));
   check(await page.locator('#unsimBtn').isDisabled(), 'remove simulated');
   await page.click('#closeBtn'); await page.waitForFunction(() => document.getElementById('statusPill').textContent === 'Closed');
   const closedCheck = await ctx.newPage(); await closedCheck.goto(shareUrl); await closedCheck.waitForSelector('#message.active');

@@ -60,6 +60,7 @@ Until it is online, you can still open `index.html` directly from your computer 
 
 ## Good to know
 
+- To take a survey again yourself in a browser that has already finished it, add `&reset` to the end of the participant link. It forgets that browser's memory of the test, saves a real response, and offers Start over on the thank you screen. Preview is the better choice when you do not want a response saved.
 - **Duplicate** (on the tests list and on a results page) makes a copy with the same messages and settings and no responses, named "... (copy)", and opens it for editing.
 - **Edit test** on the results page changes the name, scenario, question, segment questions, email setting and closing question at any time; participants from then on see the new wording. The messages themselves lock once the test has responses, because each answer refers to messages by position. If the only responses are simulated, remove them to unlock.
 - The admin page needs a login, and only emails in the `admins` table get in. Anyone with a participant link can respond, and the link is unguessable but not secret, so send it to a known list.
