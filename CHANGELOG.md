@@ -2,6 +2,11 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-03: final screen answers were not being saved
+
+- Bug: since the final screen went live (2 Nov), comments, segment answers and emails were silently lost for real participants. The choices and timings were saved. Cause: the API in front of the database had not refreshed its list of functions, so the call that attaches the final answers returned "not found", and the page ignored the error. Three responses on "Newsletter test" are affected; their final answers cannot be recovered.
+- Fixed by refreshing the API's function list, and the page now reports a failed send with a retry instead of showing the thank you regardless.
+
 ## 2026-11-03: head to head upsets
 
 - On the Head to head tab (and in the summary grid), a row is highlighted when that message is ranked above one it lost to or tied with, with the cell outlined. The note above the grid lists each case, or says there is nothing worth flagging.

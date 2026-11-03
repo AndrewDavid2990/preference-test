@@ -12,7 +12,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Montserrat:wght@700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 <div class="wrap">
@@ -79,9 +79,9 @@
 
 </div>
 
-<script src="config.js?v=18"></script>
-<script src="db.js?v=18"></script>
-<script src="analysis.js?v=18"></script>
+<script src="config.js?v=19"></script>
+<script src="db.js?v=19"></script>
+<script src="analysis.js?v=19"></script>
 <script>
   const $ = id => document.getElementById(id);
   const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0, 0); };
@@ -241,7 +241,14 @@
     const details = { comment: asksComment() ? $('commentText').value.trim() : '', segments: picked.map(p => p.value), email: asksEmail() ? $('email').value.trim() : '' };
     if (!preview && (details.comment || details.segments.length || details.email)) {
       $('finalSend').disabled = true;
-      try { await db.finishResponse(responseId, details); } catch (err) { /* the choices are already saved; a lost detail is not worth blocking the thank you */ }
+      try { await db.finishResponse(responseId, details); }
+      catch (err) {
+        // The choices are already saved. Say so, and let them try again rather than silently losing these answers.
+        $('finalSend').disabled = false;
+        $('finalError').textContent = 'Your choices are saved, but these answers could not be sent (' + err.message + '). Please try Send again.';
+        $('finalError').classList.add('on'); $('finalSkip').style.display = '';
+        return;
+      }
     }
     showResults(true);
   });

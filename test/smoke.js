@@ -19,6 +19,7 @@ const server = http.createServer((req, res) => {
 
 /* ---------- fake Supabase: REST with the same access rules as the real one, plus auth ---------- */
 const tables = { tests: [], responses: [] };
+let failFinishOnce = false;   // set to make the next final screen send fail, to check the retry path
 let seq = 0; const uuid = () => '00000000-0000-4000-8000-' + String(++seq).padStart(12, '0');
 const ADMIN = { email: 'admin@example.com', password: 'secret-pass' };
 let tokenSerial = 0, refreshes = 0, pwChanges = [];
@@ -35,6 +36,7 @@ function filterRows(rows, params) {
 async function fakeRest(route, req) {
   const u = new URL(req.url()); const table = u.pathname.split('/').pop(); const params = u.searchParams; const method = req.method();
   if (u.pathname.endsWith('/rpc/finish_response')) {   // the one function participants may call
+    if (failFinishOnce) { failFinishOnce = false; return route.fulfill({ status: 404, contentType: 'application/json', body: '{"message":"Could not find the function"}' }); }
     const b = JSON.parse(req.postData()); const r = tables.responses.find(x => x.id === b.p_id);
     if (r && r.comment === '' && r.segments.length === 0 && r.email === '') { r.comment = String(b.p_comment || '').slice(0, 2000); r.segments = b.p_segments || []; r.email = String(b.p_email || ''); }
     return route.fulfill({ status: 204, body: '' });
@@ -237,6 +239,8 @@ async function fakeAuth(route, req) {
   check(tables.responses.filter(r => !r.simulated).length === 1, 'response saved before the final screen');
   await sp.screenshot({ path: path.join(SHOTS, 'phone-final.png'), fullPage: true });
   await sp.fill('#commentText', 'It felt the most concrete.'); await sp.check('input[name="segment0"][value="Sales"]'); await sp.check('input[name="segment1"][value="Under 50"]'); await sp.fill('#email', 'pat@example.com');
+  failFinishOnce = true; await sp.tap('#finalSend'); await sp.waitForSelector('#finalError.on');
+  check((await sp.locator('#finalError').textContent()).includes('could not be sent') && await sp.locator('#final.active').count() === 1 && !(await sp.locator('#finalSend').isDisabled()), 'a failed send is reported with a retry, not swallowed');
   await sp.tap('#finalSend'); await sp.waitForSelector('#results.active');
   check(tables.responses.find(r => !r.simulated).comment === 'It felt the most concrete.', 'comment attached to the saved response');
   check(Object.keys(tables.responses.find(r => !r.simulated).choices).length === 28, '28 choices recorded');

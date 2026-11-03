@@ -15,3 +15,9 @@ language sql security definer set search_path = public as $$
 $$;
 revoke all on function finish_response(uuid, text, jsonb, text) from public;
 grant execute on function finish_response(uuid, text, jsonb, text) to anon, authenticated;
+
+-- After creating or changing a function through the connector, the API layer (PostgREST) must be told to
+-- refresh its list, or calls to the new function return 404 "not in the schema cache". The SQL editor does
+-- this automatically; execute_sql through the connector did not, which silently lost three participants'
+-- final answers on 2026-11-02. Always run this afterwards and then call the function through the REST API once.
+notify pgrst, 'reload schema';
