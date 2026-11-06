@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-06: masked emails
+
+- Email addresses on the Consistency and Comments tabs are masked by default (first letter, then the domain). A Show emails / Hide emails button on the Consistency tab toggles them; the choice is remembered in the browser. CSV export is unchanged.
+
 ## 2026-11-03: reset link
 
 - Adding `&reset` to a participant link clears that browser's memory of the test (progress and "already completed"), so the owner can take it again; the thank you screen then offers Start over. Explained under the participant link on the results page.

@@ -263,6 +263,13 @@ async function fakeAuth(route, req) {
   /* admin: refresh, export, remove simulated, close, delete */
   await page.click('#refreshBtn'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('16 participants'));
   await page.click('.tab[data-v="v-comments"]'); check(await page.locator('#comments li').count() === 1 && (await page.locator('#comments .said').textContent()) === 'It felt the most concrete.', 'comments tab lists the comment');
+  await page.click('.tab[data-v="v-consist"]');
+  const consistText = () => page.locator('#consist').innerText();
+  check(await page.locator('#toggleEmails').isVisible() && (await consistText()).includes('p***@example.com') && !(await consistText()).includes('pat@example.com'), 'emails are masked by default');
+  await page.click('#toggleEmails'); check((await consistText()).includes('pat@example.com') && (await page.locator('#toggleEmails').textContent()) === 'Hide emails', 'show emails reveals them');
+  await page.reload(); await page.waitForSelector('#group.active'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('16 participants'));
+  await page.click('.tab[data-v="v-consist"]'); check((await consistText()).includes('pat@example.com'), 'email visibility is remembered');
+  await page.click('#toggleEmails'); check(!(await consistText()).includes('pat@example.com'), 'hide emails masks them again');
   await page.screenshot({ path: path.join(SHOTS, 'admin-v-comments.png'), fullPage: true });
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportBtn')]);
   const csv = fs.readFileSync(await dl.path(), 'utf8'); check(csv.split('\n').length === 1 + 16 * 28 && csv.includes('"Sales","Under 50","pat@example.com","It felt the most concrete."') && csv.split('\n')[0].startsWith('participant,submitted,"Which best describes you?","Company size",email,comment'), 'csv has a column per segment question, email, comment and seconds');
