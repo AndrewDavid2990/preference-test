@@ -60,7 +60,7 @@ Until it is online, you can still open `index.html` directly from your computer 
 
 ## Good to know
 
-- Email addresses are masked on the Consistency and Comments tabs (p***@example.com) so you can share your screen; **Show emails** reveals them, and the choice is remembered in your browser. The CSV always has the full addresses.
+- Email addresses are masked on the Consistency and Comments tabs so you can share your screen: the name is hidden, and the domain too unless it is a common personal provider (p***@gmail.com stays readable, p***@***.com for a company address); **Show emails** reveals them, and the choice is remembered in your browser. The CSV always has the full addresses.
 - To take a survey again yourself in a browser that has already finished it, add `&reset` to the end of the participant link. It forgets that browser's memory of the test, saves a real response, and offers Start over on the thank you screen. Preview is the better choice when you do not want a response saved.
 - **Duplicate** (on the tests list and on a results page) makes a copy with the same messages and settings and no responses, named "... (copy)", and opens it for editing.
 - **Edit test** on the results page changes the name, scenario, question, segment questions, email setting and closing question at any time; participants from then on see the new wording. The messages themselves lock once the test has responses, because each answer refers to messages by position. If the only responses are simulated, remove them to unlock.

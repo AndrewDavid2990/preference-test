@@ -265,7 +265,8 @@ async function fakeAuth(route, req) {
   await page.click('.tab[data-v="v-comments"]'); check(await page.locator('#comments li').count() === 1 && (await page.locator('#comments .said').textContent()) === 'It felt the most concrete.', 'comments tab lists the comment');
   await page.click('.tab[data-v="v-consist"]');
   const consistText = () => page.locator('#consist').innerText();
-  check(await page.locator('#toggleEmails').isVisible() && (await consistText()).includes('p***@example.com') && !(await consistText()).includes('pat@example.com'), 'emails are masked by default');
+  check(await page.locator('#toggleEmails').isVisible() && (await consistText()).includes('p***@***.com') && !(await consistText()).includes('example.com'), 'emails are masked by default, company domain hidden');
+  check(await page.evaluate(() => maskEmail('sam@gmail.com') === 's***@gmail.com' && maskEmail('Sam@Acme.io') === 'S***@***.io' && maskEmail('nobody') === '***'), 'personal domains stay visible, company domains do not');
   await page.click('#toggleEmails'); check((await consistText()).includes('pat@example.com') && (await page.locator('#toggleEmails').textContent()) === 'Hide emails', 'show emails reveals them');
   await page.reload(); await page.waitForSelector('#group.active'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('16 participants'));
   await page.click('.tab[data-v="v-consist"]'); check((await consistText()).includes('pat@example.com'), 'email visibility is remembered');
