@@ -173,13 +173,18 @@ td.upset-cell { outline: 2px solid var(--ink); outline-offset: -2px; }
 
 /* participant list (consistency) */
 .plist { list-style: none; padding: 0; margin: 0; border: 1.5px solid var(--ink); border-radius: 3px; }
-.plist li { display: grid; grid-template-columns: 1fr 190px 120px auto; gap: 12px; align-items: center; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--line); font-size: 14px; color: var(--ink); }
+.plist li { display: grid; grid-template-columns: minmax(0, 1fr) 190px 120px auto; gap: 12px; align-items: center; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--line); font-size: 14px; color: var(--ink); }
+.plist li > span { min-width: 0; overflow-wrap: anywhere; }   /* long emails wrap instead of widening the page */
 .plist li:first-child { border-top: 0; }
 .plist li.hidden { color: var(--muted); }
 .plist li.hidden > span:first-child { text-decoration: line-through; }
 .plist .acts { display: flex; gap: 6px; }
 .plist .btn { padding: 6px 10px; font-size: 12px; font-weight: 500; }
-@media (max-width: 560px) { .plist li { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) {
+  .plist li { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 12px 14px; }   /* one column on phones: name, detail, status, then the buttons */
+  .plist li > span:nth-child(2) { color: var(--muted); }
+  .plist .acts { margin-top: 6px; }
+}
 
 /* tests list (admin home) */
 .tlist { list-style: none; padding: 0; margin: 0 0 24px; border: 1.5px solid var(--ink); border-radius: 3px; }

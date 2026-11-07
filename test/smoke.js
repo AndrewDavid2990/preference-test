@@ -271,6 +271,11 @@ async function fakeAuth(route, req) {
   await page.reload(); await page.waitForSelector('#group.active'); await page.waitForFunction(() => document.getElementById('groupLead').textContent.startsWith('16 participants'));
   await page.click('.tab[data-v="v-consist"]'); check((await consistText()).includes('pat@example.com'), 'email visibility is remembered');
   await page.click('#toggleEmails'); check(!(await consistText()).includes('pat@example.com'), 'hide emails masks them again');
+  await page.click('#toggleEmails');   // show the long address for the phone width check
+  await page.setViewportSize({ width: 390, height: 844 });
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'consistency list does not scroll sideways on a phone');
+  await page.screenshot({ path: path.join(SHOTS, 'phone-consistency.png'), fullPage: true });
+  await page.setViewportSize({ width: 1000, height: 900 }); await page.click('#toggleEmails');
   await page.screenshot({ path: path.join(SHOTS, 'admin-v-comments.png'), fullPage: true });
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportBtn')]);
   const csv = fs.readFileSync(await dl.path(), 'utf8'); check(csv.split('\n').length === 1 + 16 * 28 && csv.includes('"Sales","Under 50","pat@example.com","It felt the most concrete."') && csv.split('\n')[0].startsWith('participant,submitted,"Which best describes you?","Company size",email,comment'), 'csv has a column per segment question, email, comment and seconds');

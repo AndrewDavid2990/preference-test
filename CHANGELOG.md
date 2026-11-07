@@ -2,6 +2,10 @@
 
 Newest first. Dates are when the change went live on `main`.
 
+## 2026-11-07: consistency list on phones
+
+- Participant rows on the Consistency tab stack into one column on phones and long email addresses wrap, so the page no longer scrolls sideways.
+
 ## 2026-11-06: masked emails
 
 - Email addresses on the Consistency and Comments tabs are masked by default: first letter of the name, and the domain only when it is a common personal provider such as gmail.com; company domains are masked down to their ending. A Show emails / Hide emails button on the Consistency tab toggles them; the choice is remembered in the browser. CSV export is unchanged.
